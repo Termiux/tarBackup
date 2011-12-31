@@ -1,37 +1,115 @@
 #!/bin/bash
 
-##################################################################
-##								##
-##   backupCron shell script v0.2, tested on RHEL 5		##
-##   Jorge A. Moreno morenog.jorge@gmail.com	                ##
-##   November 2011  Backup Bash Shell Script			##
-##								##
-##  Use script to backup your server using tar/gzip    		##
-##  The script can copy the backup to a SMB share on 		##
-##  another server, or just keep the backups locally		##
-##								##
-## 	CHANGES in this versions (v0.2)				##
-##								##
-##  - Added several checks for the SMB share, now it checks 	##
-##    folders existence before trying to use them	 	##
-##  - Fixed certain issues where it wont properly umount the	##
-##    SMB share							##
-##  - Code clean up, comments have been updated			##
-##  - Added flag to enable/disable backup dump on the SMB 	##
-##    share, check $Remote variable for more info		##
-##  - Added error checks for tar, if ends in failure it	 	##
-##    will trigger an alert					##
-##  - Removed certain condition that caused early exits 	##
-##  - Umount is now logged to aid in debbuging			##
-##								##
-##  TODOS							##
-##	-Find a better way to send mail messages		##
-##	-Change current hard coded user and pass schema		##
-##	-Try and reduce code further more and make it		##
-##	 easier to understand					##
-##	-Allow easier adaptation to other servers (too custom)	##
-##								##
-##################################################################
+##################################################################################################################
+##														##
+##   tarBackup shell script v0.4, tested on RHEL 5								##
+##   Jorge A. Moreno fixed-term.jorge.moreno@us.bosch.com							##
+##   November 2011  Backup Bash Shell Script									##
+##														##
+##   Use script to backup your server using tar/gzip. It can copy the backup to a SMB share on another server, 	##
+##   or just keep the backups locally if you wish. I've made some improvements since last versions, so its a	##
+##   little more smart now when something bad happens. It also tries to inform you every time something 	##
+##   unexpected happens so you always know what is going on. 							##
+##														##
+##  How to use the script:											##
+##														##
+##	To use the script, you need to set a few values first. It is recommended to read the script 		##
+##	working explanation below. Then you can set your own settings.  To use just drop the script 		##
+##	in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance		##
+##	is well configured you will be mailed of the script output. Anyway you will still be mail if something	##
+##	happens. 												##
+##														##
+## >>>>	IF YOU DON'T WANNA READ DESCRIPTION AND JUST WANNA SET THE BACKUPS, DEFAULT OPTIONS ARE USUALLY OK <<<<	##
+##	However there are still variable you must set:								##
+##														##
+##	Default values are: Backups will be remote. Full Backup schedule for Sunday. Mail on dirty execution	##
+##														##
+##	Following MUST be set:											##
+##														##
+##	$backupTargetDir											##
+##	$credentials												##	
+##	$smbMountPoint			==> Not necessary if $Remote set to false				##
+##	$serverPath			==> Not necessary if $Remote set to false				##
+##	$lastWeekBackupFolder		==> Not necessary if $Remote set to false				##
+##	$dumpPlace			==> Not necessary if $Remote set to false				##
+##														##
+##														##
+##   Explanation:												##
+##	You can override default behavior using flags. The default is as follows:				##
+##														##
+##	Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous 	##
+##	backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	##
+##	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to 	##
+##	a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if	##
+##	not it  tries to create it. If it can't it complains about it, same if it has no write permissions on 	##
+##	the share.												##
+##														##
+##	If things go well it checks for 'Remote' previous backups.If found this backups are then moved! 	##
+##	to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. 	##
+##	Share is then unmounted and script finishes execution.							##
+##   														##
+##	If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail 	##
+##	(default is set to root). The mail will be accompanied by a error log so you can check what went wrong.	##
+##														##
+##														##
+##   Overriding with flags											##
+##   														##
+## 	You can check variables definition for detailed information, here is a list of things will you probably ##
+##	want to override with existent flags:									##
+##														##
+##	Remote Backups ($Remote): Remote backups can be made to be local only. Default: true			##
+##														##
+##	Full Backup Day ($fullBackupDay): Sets the number of the day of the week when you would like to run	##
+##	a Full Backup. Day number is based on date program day starts on Monday (1). Default 7 (Sunday)		##
+##														##
+##	Mail On Dirty	($mailOnDirty): Controls whether you wanna receive a mail notification when script	##
+##	execution was marked as dirty. A dirty execution is when script encountered non fatal errors so		##
+##	it managed to finish. Default: true									##
+##														##
+##	Remove Old Backups ($removeOldBackups): We use the $lastWeekBackupFolder to store last week backups	##
+##	When script runs and connects to remote SMB share it moves your last weeks backups to that folder	##
+##	and puts the new backup in $dumpPlace. However after a few weeks that folders gets all previous backups	##
+##	and gets big in size. Use this to erase those backups, and hold ONLY the last week backup and not all	##
+##	previous backups. Default: false		 							##
+##														##
+##	Transfer All ($transferAll): Sometimes (for example) if files were modified manually things can get 	##
+##	messed up. Lets say someone erase your remote backups on a Monday. However you still have this week 	##
+##	local backups. When the script runs it assumes you are making a incremental backup cause of your have	##
+## 	other incremental and FULL for this week but once the share is mounted and folder inspected it 		##
+##	realizes that the remote backups are none existent. This differs from your locals. So it alerts of it 	##
+##	saying that only the current incremental backup (the one we're doing today) will be transfered. 	##
+##	Use this flag to override this and transfer the missing backups too (previous incrementals and full)	##
+##	so you have a complete Full and incrementals in the remote location, just as you do locally. 		##
+##	Default: false						 						##
+##														##
+##														##
+## 	CHANGES in this version (v0.4)										##
+##														##
+##  - Checks have been re tested and a minor bug corrected							##
+##  - Debugging options have been added, set $debugging flag to true to get a detailed error log during runs	##
+##  - Added flag $fullBackupDay to change the day we want the full backup to happen.				##
+##  - Added flag $removeOldBackups to delete backups older than a week every week in the $lastWeekBackupFolder	##
+##  - Added flag $isDirty to aid in debugging and alerts. Script execution will be marked as dirty if any	##
+##    non fatal error occurred during script execution of script. You will still be mailed with error log	##
+##  - Added flag $mailOnDirty to override mail notification on dirty executions					##
+##  - Add function checkErrorCodes to override normal error logic, this helps to handle non fatal errors	##
+##    in a more elegant way											##
+##  - Added $tranferAll flag to tranfer all local backups if remotes are incomplete				##
+##  - Improved some error messages descriptions for better understanding					##
+##  - Added script description and flags explanation in comments						##
+##  - Redefine way of variable declaration for better descriptions and usage explanation			##
+##  - Added $tarOptions variable to easily change tar options							##
+##  - Other minor bugs												##
+##														##
+##														##
+##  TO DOS													##
+##	- $transferAll implementation is ugly, needs improvement						##
+##	- Debugging causes unneccesary overhead while checking if enabled. Needs changing			##
+##	- Change current user and pass schema its insecure							##
+##	- Try and reduce code further more and make it easier to understand					##
+##	- Allow easier adaptation to other servers (is too custom)						##
+##														##
+##################################################################################################################
 
 ##################################################
 ##		Variables Declarations		##
@@ -43,107 +121,313 @@
 ## 	 Helpers	 ##	
 ###########################
 
-hostname=`hostname -s`				# Get hostname to append it to backup name so we know who is this backup from
-currentDate=`date +%F` 				# Holds the Date in format Year-Month-Day, for more info check man date
-weekDay=`date +%u`						# Holds the day of the week in a number fomat 1...7 (1 is Monday)
-outputName="$hostname"_Incremental_Backup_"$currentDate"	# Sets the format for a incremental backup output file name
-fullBackupName="$hostname"_FULL_Backup_"$currentDate"		# Sets the format for a Full backup output file name
-backupTargetDir="/"						# The directory that you want to backup
-isFull="true"					# This flag is used to tell if this is to be a full or incremental backup
-Remote="true"					# Controlls whether script will use remote backups or only locals
+#
+# Runs hostname cmd to get the short hostname of current server. Hostname is used in the outputName of the final tar file
+#
+readonly hostname=$(hostname -s)
 
+#
+# Runs date cmd in full format. This outputs in Yeah-Month-Day format. This is used as a part of outputName of the final tar file
+#
+readonly currentDate=$(date +%F)
+
+#
+# Runs date cmd to get the current day of the week number. Date's man page states that this version take Monday as day 1. This number is used
+# to properly schedule full or incremental backups
+#
+readonly weekDay=$(date +%u)
+
+#
+# Sets the outputName that the file will have. It assumed to always be incremental unless stated otherwise. If so variable will have to be reassigned.
+# File name is made of short hostname + incremental_string + current date
+#
+outputName="$hostname"_Incremental_Backup_"$currentDate"
+
+#
+# File name of a full backup. Like outputName but for full backups.
+#
+readonly fullBackupName="$hostname"_FULL_Backup_"$currentDate"
+
+#
+# Set the directory you want to make a backup of. Point it to root if you wanna backup all the server data. 
+# If you need to exclude certain folders, set this to those folder parent and then set the exclude list in the 
+# proper variable.
+#
+readonly backupTargetDir="/home/moj2ju/MyScripts"
+
+#
+# Holds the number of the day you wanna run a full backup. This number is dependent of date cmd number format check $weekDay for more info
+#
+readonly fullBackupDay="7"
+
+#
+# Helper variable. Used in checks to determinate if backup is full or incremental
+#
+isFull="true"
+
+#
+# Controls whether the backup will be saved in a remote location or it will be saved on local file system. False means backup is local only
+#
+readonly Remote="true"
+
+#
+# If script runs and finds non fatal errors it will mark execution as dirty. Dirty execution logs are sent to root. By default execution is not
+# dirty unless marked otherwise. This usually happens when a program return a none zero exit.
+#
+isDirty="false"
+
+#
+# This are the options passed to tar when running the backup. czpf means (c)Create backup (z)Gzip it (p) Preserver permissions (f) is name
+# that the tar file will get. Check tar man page for more info
+#
+readonly tarOptions="czpf"
+
+#
+# If true mail will be deliver to $who2mail whenever script execution is marked as dirty.
+#
+readonly mailOnDirty="true"
+
+#
+# Off by default. Can be used to test for problems, it will output to errorLog ONLY. It outputs some variables data used and
+# other performed steps.
+#
+readonly debugging="true"
 
 ###################################################################
 ##		Remote backups exclusive variables		 ##
 ###################################################################
-##
-## This have not been implemented yet, will be soon
-##
-##transferAll="false"				# Controls whether the script will transfer all the current backups if remote folder had to be created
-##removeOldBackup="true"				# During a remote backup we move last week backups to $lastWeekBackupFolder this controls wheter to keep them or delete them every week. If true folder will only hold last week backups and contents delete every week
-##
+
+#
+# Variables $transferAll and $removeOldBackups are part of TODO's their functionality is still not implemented
+
+#
+# Controls whether the script will transfer all the current backups if remote folder had to be created
+#
+readonly transferAll="false"
+
+#
+# During a remote backup we move last week backups to $lastWeekBackupFolder this controls whether to keep them or delete them every week.
+# If true folder will only hold last week backups. Old backups will be deleted!
+#
+readonly removeOldBackups="true"
+
+#
+# During a remote backup if its detected that remote backups are partial or non existent and this differs from local state
+# then we set this flag to true so we can act with the transferAll mechanism (assuming is set to true)
+#
+remoteBackupIncomplete="false"
+
+
 
 ###########################
 ##	   Paths	 ##	
 ###########################
 
-defaultbackupDir="/serverBackups"				# Sets the default backups directory, all backups are first saved here
-workDir="/serverBackups"					# Holds the path we are working into
-smbPath="/mnt/samba"						# Holds the path used to mount the share
-serverPath="//serverName/share"		# Server address and share path
-lastWeekBackupFolder="$smbPath"/lastWeekBackupFolder 	# Holds the path to store old backups
-dumpPlace="$smbPath"/BackupsFolder			# Place where we will dump the files, this is on the windows server
-errorLog="$workDir"/error.log					# Error log file path
-snarLog="$workDir"/log.snar					# Snar log file path (file used by tar for incremental backups)
+#
+# Sets the default backups directory, all backups are saved here. If $Remote set to true, this is what will be copied to SMB share
+#
+readonly defaultBackupDir="/home/moj2ju/fakeServerBackups"
 
+#
+# Helper variable. Holds the current path we are working into. Unlike defaultBackupDir this changes over script execution
+#
+workDir=$defaultBackupDir
+
+#
+# Used by the Mount and Umount programs to (u)mount the SMB share make sure is valid!
+#
+smbMountPoint="/mnt/samba"						
+
+#
+# Server address. You can set and ip and route to the SMB share or name and route
+# Example //server.mycompany.com/SMBshare/folder
+#
+serverPath="//ju1f06c1/software/iso_files/redhat"
+
+#
+# This is the path to folder where to store last week backups
+# Example: "$smbMountPoint"/oldBackupsFolder
+#
+lastWeekBackupFolder="$smbMountPoint"/Server_ju1x10c1/lastWeekBackup
+
+#
+# Where we will dump the backups if $Remote set to true
+# Example "$smbMountPoint"/BackupsFolder
+#
+dumpPlace="$smbMountPoint"/Server_ju1x10c1/Backups
+
+#
+# Name and location of the error log file
+# Example: "$workDir"/logfile.log
+#
+errorLog="$workDir"/error.log
+
+#
+# Name and location of the incremental snar log file. This file is used by tar to make the incremental backups
+# Example: "$workDir"/log.snar
+#
+snarLog="$workDir"/log.snar
+
+#
+# Tar exclusion folders list. This is ugly, we could have easily used -X option and point to a exclusion list file but I don't like to work with many
+# files. If you don't like it you can easily change it ;)
+#
+tarExcluded=" --exclude=error.log --exclude=/proc/* --exclude=/media/* --exclude=/dev/* --exclude=/mnt/* --exclude=/sys/* --exclude=/tmp/* --exclude=/data/* --exclude=/images/* --exclude=/serverBackups --exclude=/home/moj2ju/Desktop/ --exclude=/usr/share/doc"
 
 
 ###########################
 ##	   Samba	 ##	
 ###########################
 
-credentials="user%pass"			# Holds user name and password to authenticate format is user%pass
-## This approach is not very secure! Improve in a later versions, for the time being chmod og-rwx (strip non root from r/w/x)
+#
+# Credentials to authenticate on the SMB share. If (when) this change SMB mount will fail if authentication is needed
+#
+# Usage format: user%pass	Quote it if you need odd characters in your password
+# Example: credentials="mike%thisIStheSUPERpassl33t0!%&"
+#
+# This approach is not very secure!! Improve in later versions, for the time being chmod og-rwx (strip non root from r/w/x)
+#
+credentials="moj2ju%THISisMYnewPASS0!"
+
+###########################
+##	Programs Names	 ##	
+###########################
+
+#
+# Following variables are used for error code checking, you can use this to signal who you wanna check via the checkErroCode function
+#
+
+#
+# Tar program description
+#
+tar='Tar program with gzip'
+
+#
+# Mail program description
+#
+mail='Mail program'
+
+#
+# Mount program description
+#
+mount='Mount program to mount samba shares'
+
+#
+# Umount program description
+#
+umount='Umount program to Un mount samba shares'
+
+
+###################################
+##	   Programs Paths	 ##	
+###################################
+
+#########################
+# >>>>	PENDING!!! <<<<	#
+#########################
 
 
 ###########################
 ##	   Mail		 ##	
 ###########################
 
-who2mail="root@localhost"				# The address of who we will inform of the problem
+#
+# Who do we mail when something breaks. Default set to root
+# This approach assumes you already have your mail server configured. If not mail will only be delivered locally only
+#
+who2mail="root@localhost"
+
+#
+# Mail subject when something breaks
+#
 mailSubject="There was a problem with the backups"	# Set the subject for the mail you will get if something goes wrong
-mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functional
 
 
+#
+# Holds the email message file name. This is used to store the mail message when something breaks and someone must be informed
+#
+mailmsg=getMailMsgFile
+	
 	#
-	# Mounts the SMB network share, currently it connects to the ju1f06c1 server in "software" share and it mounts it in $smbPath 
-	# then it navigates to $serverPath directory.  Current credentials are static and set in Samba variables section.
+	# Create a tmp file via the mktemp program, this should help to create unique filenames, if it fails by any reason,
+	# it complains and function falls back to the old schema (used in previous versions).
+	#
+	# Returns Mail Message File Name
+	#
+	function getMailMsgFile
+	{
+		# Create mail msg file
+		fileName=$(mktemp /tmp/mailMsg.XXXX) || { sayLoud "Could not create mail msg file! will fall back to old method";fileName="mailmsg.txt"; }
+		return $fileName
+	}
+	#
+	# Mounts the SMB network share, currently it connects to $serverPath share and it mounts it in $smbMountPoint 
+	# Current credentials are static and set in Samba variables section.
 	# If (when) this credentials change script will fail to execute.
-	# 
 	#
-	# If there's a problem mounting the share then it trys to umount it (just to be on the safe side, via leaveAndMail), 
-	# then its sends a Mail to the configured person on the $whom2mail variable, with the appended log. 
+	# If there's a problem mounting the share then it tries to umount it (just to be on the safe side, via leaveAndMail), 
 	# See leaveAndMail function for details
 	#
 	function mountShare()
 	{
-		# Sometime permission problems avoid overwrites so erase old log before proceeding
+		# Sometime permission problems blocks the script from overwriting log. Erase old log before proceeding
 		/bin/rm $dumpPlace/error.log  2>/dev/null
-		{
+		toLog "Rm called for OLD error log"
+		
 		sayLoud "=============================== "
 		sayLoud "Mounting share to copy backup..."
-		/sbin/mount.cifs $serverPath $smbPath/ -o user=$credentials 2>>$errorLog
-		} && { sayLoud "Mount...succesful"; }|| { sayLoud "Mount...Failed!";leaveAndMail; } # leaveAndMail umounts in the event of errors
+		{
+		/sbin/mount.cifs $serverPath $smbMountPoint/ -o user=$credentials 2>>$errorLog
+		} && { sayLoud "Mount...succesful"; }|| { sayLoud "Mount...Failed!";leaveAndMail; }
+
 	}
 
 	#
-	# Checks for folders existence and appropiate permissions on them before attempting to save the backup files
+	# Checks for folders existence and appropriate permissions on them before attempting to save the backup files
 	#
 	function checkShare
 	{
-	
-		if [ ! -d $dumpPlace ]
+		if [ ! -d $smbMountPoint ] #Checks if SMB mount point exists, if not there is no point in checking folders below
+		then
+			sayLound "$smbMountPoint doesn't exists!, I will try to create it"
+			{
+			mkdir $smbMountPoint 2>>$errorLog
+			} && { sayLoud "$smbMountPoint Creation...succesful";}|| { 
+			sayLoud "$smbMountPoint Creation...Failed!";leaveAndMail; }
+		fi
+		
+
+		if [ ! -d $dumpPlace ] #Checks if $dumpPlace directory exists
 		then
 			sayLoud "$dumpPlace doesn't exists!, I will try to create it"
 			{
 			mkdir $dumpPlace 2>>$errorLog
-			} && { sayLoud "$dumpPlace Creation...succesful"; }|| { sayLoud "$dumpPlace Creation...Failed!";leaveAndMail; }
+			} && { sayLoud "$dumpPlace Creation...succesful";remoteBackupIncomplete="true";toLog "Remote backup incomplete";}|| { 
+			sayLoud "$dumpPlace Creation...Failed!";leaveAndMail; }
+		fi
 
-		elif [ ! -d $lastWeekBackupFolder ]
+		if [ ! -d $lastWeekBackupFolder ] #Checks if $lastWeekBackupFolder directory exists
 		then
 			sayLoud "$dumpPlace doesn't exists!, I will try to create it"
 			{
 			mkdir $lastWeekBackupFolder
-			} && { sayLoud "$lastWeekBackupFolder Creation...succesful"; }|| { sayLoud "$lastWeekBackupFolder Creation...Failed!";leaveAndMail; }
+			} && { sayLoud "$lastWeekBackupFolder Creation...succesful"; }|| { 
+				sayLoud "$lastWeekBackupFolder Creation...Failed!";leaveAndMail; }
+		fi
 
-		elif [ ! -w $dumpPlace ]
+		if [ ! -w $dumpPlace ] # Checks for write permissions on $dumpPlace
 		then
 			sayLoud "I have not write permissions on $dumpPlace I'll quit"
-		elif [ ! -w $lastWeekBackupFolder ]
+			leaveAndMail
+		fi
+
+		if [ ! -w $lastWeekBackupFolder ] # Checks for write permissions on $lastWeekBackupFolder
 		then
 			sayLoud "I have not write permissions on $lastWeekBackupFolder I'll quit"
+			leaveAndMail
 		fi
-		
+
+		toLog "All checks passed!"
 		# If passed all above then continue
 	}
 	
@@ -153,21 +437,45 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 	#
 	function saveBackup()
 	{
+		#size=$(du $defaultBackupDir/$outputName.tgz | awk '{ print $1 }')
 
-		# Copy files and tell user copy is in progress
-		sayLoud "Saving file please wait..."
-		{ 
-			/bin/cp $defaultbackupDir/$outputName.tgz $dumpPlace/ 
-			/bin/cp $defaultbackupDir/log.snar $dumpPlace/ 
-		} && { sayLoud "Backup save...succesful"; }|| { sayLoud "Backup save...Failed!";leaveAndMail; }
+		# Checks if incomplete for alerts and possible transferAll mechanism
+	        if [ "$remoteBackupIncomplete" == "true" ]
+        	then
+			toLog "Remote Backups were imcomplete, run checkIncompleteBackups"
 		
-		#/bin/mv $errorLog $dumpPlace/
-		/bin/cp $errorLog $dumpPlace/
+			checkIncompleteBackups
+		fi
+
+		if [ "$transferAll" == "false" ]
+		then
+			# Remote backups seem to be incomplete but transferAll is OFF do normal backup
+			
+			toLog "Remote backups seem to be incomplete but transferAll is OFF"
+
+			# Copy files and tell user copy is in progress
+			sayLoud "Saving file please wait..."
+			sayLoud "Backup transfer started at `/bin/date`"
+			{ 
+				/bin/cp $defaultBackupDir/$outputName.tgz $dumpPlace/ 
+			} && { sayLoud "Transfer completed at `/bin/date`";sayLoud "Backup save...succesful";}|| { 
+			sayLoud "Backup save...Failed! File transfer was interrupted. Backup could not be saved to its configured destination";leaveAndMail; }
 		
+			# Copy Incremental data file
+			/bin/cp $defaultBackupDir/log.snar $dumpPlace/ 2>>$errorLog
+			toLog "Copy of incremental file called"
+		
+			toLog "About to copy errorLog to remote share. This will be the last line on remote errorLog this is expected"
+	
+			# From this point and on, messages will only appear on local errorLog
+			/bin/cp $errorLog $dumpPlace/
+			toLog "Copy of erroLog file called"
+		
+		fi
 	}
 	
 	#
-	# use this function to output to user(or console) and save the output to the log file at the same time
+	# use this function to output to user (or console) while also saving the output to the log file
 	#
 	function sayLoud()
 	{
@@ -176,43 +484,142 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 	}
 
 	#
-	# Creates a tar archives from the $backupTargetDir directory (ussually / ), it excludes as many directories as needed for example /data/
-	# folder holds the BackupPC dump files, /images/ holds FOG backups, and so on, if more are needed simply add them.
+	# Use to save args to error log file. Only saves the info if debugging is ON.
+	#
+	function toLog()
+	{
+		if [ "$debugging" == "true" ]
+		then
+			echo $1 >>$errorLog
+		fi
+	}
+
+	#
+	# Creates a tar archives from the $backupTargetDir directory (ussually / ), it excludes as many directories as needed
+	#
+	# If more are needed simply add them.
 	# The function excludes this backup file folder (itself) to avoid recursion ;)
 	#
 	# Now the backup is incremental, the incremental info in saved in a file name log.snar extension is as specified in tar docs
 	#
-	
 	function tarIt()
 	{
 	sayLoud "Creating tar archive..."
 		{
-		tar czpf $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz --exclude=error.log --exclude=/proc/* --exclude=/media/* --exclude=/dev/* --exclude=/mnt/* --exclude=/sys/* --exclude=/tmp/* --exclude=/data/* --exclude=/images/* --exclude=/serverBackups --exclude=/home/moj2ju/Desktop/ --exclude=/usr/share/doc --listed-incremental $snarLog $backupTargetDir 2>>$errorLog
+		tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir 2>>$errorLog
 	
-		} && { sayLoud "Tar process...succesful"; }|| { sayLoud "Tar process...Failed!";leaveAndMail; }
+		} && { sayLoud "Tar process...succesful";toLog "This means local file has been succesfully created"; }|| { checkErrorCode "$tar"; }
 	}	
 
+        #
+        # Checks other programs error codes, you need to pass who (program) had the error for the fucntion
+        # to process the logic. Each program has its own error codes so before adding them here check man pages
+        # or other documentation. You can find a list of who on the top of the script
+        #
+        # Example: checkErrorCode "$who"  It is important to use the quotes
+        #
+        # To check for Tar error codes you should call it like this: checkErrorCode "$tar" Then you can implement your tar
+        # exclusive logic in the function for the appropiate error code.
+        #
+	function checkErrorCode
+	{
+		errorCode=$? # we have to preserve error code cause it will be overwrite on any next command execution
+		who=$1
+		# Since we did have errors even if non fatal mark execution as dirty to send mail to root
+		isDirty="true"
+		toLog "Execution just marked as dirty"
+		toLog "By $who with Error code $errorCode"
+		# Tar section
+
+		if [ "$who" == "$tar" ]
+		then
+
+			# Tar error code number 2 means that Tar finished with errors but but finished anyway
+			# so its ussually ok to keep script running even when this happens
+			if [ "$errorCode" == 2 ]
+			then
+				if [ -e $workDir/$outputName.tgz ]
+				then
+					sayLoud "Tar process...had some errors but managed to finish archive...lets continue"
+				else
+					sayLoud "Tar process...Failed! Archive file could not be created check error log"
+					leaveAndMail
+				fi
+				#return 0;
+				#exit
+			else
+				sayLoud "Tar process...Failed!"
+				leaveAndMail
+			fi
+		fi
+		
+		#################################
+		#	uMount Section		#
+		#################################
+		
+		# change who for program variable name
+		if [ "$who" == "$umount" ]
+		then
+			# Check if share is not mounted
+			if [ "$errorCode" == 1 ]
+			then
+				# Since we ended up with error code 1 we assume share is no longer mounted
+				sayLoud "Umount complained of error 1, share seems to be unmounted already!"
+
+				exit # if we dont exit leaveAndMail will be called again resulting in a loop, Exit to avoid loop condition
+			else
+				sayLoud "Unmounting...Failed! However this is no relevant to the backup file which was probably completed"
+				toLog "about to call leaveAndMail via checkErroCode function"
+				leaveAndMail
+			fi
+		fi
+
+		#################################
+		#	Template Section	#
+		#################################
+		#
+		# Use this template for the programs you may wanna check
+		#
+		# change $name for program variable name, example $tar
+		#if [ "$who" == "$name" ]
+		#then
+		#	# Check error code number
+		#	if [ "$errorCode" == number ]
+		#	then
+		#		# Logic for this code
+		#		exit
+		#	else
+		#		# Logic for other codes
+		#	fi
+		#fi
+
+	}
+
 	#
-	# This functions calls doBackup according how the backup will be, incremental or full, this depends on 2 things
-	# Number 1, if today is sunday, a full backup will be started. Number 2 if no previos backups were found, run full
-	# if none of those were present assume backup is incrementarl, bear in mind (however) that the check is only local
-	# we donot check for previous remote backups
+	# This functions calls doBackup according how the backup will be, incremental or full. This depends on 2 things
+	# Number 1, if today is $fullBackupDay, a full backup will be started. Number 2 if no previos backups were found, run full
+	# if none of those were present assume backup is incremental. Bear in mind (however) that the check is only local
+	# we don't check for previous remote backups. That is if locally we have a previous full and we'r doing incremental
+	# we will only transfer that incremetal to the SMB share. We never check if all files in here are also there, we asume they are.
 	#
 	function backup()
 	{
-		if [ "$weekDay" == 7 ] #Is sunday do a full backup!
+		if [ "$weekDay" == "$fullBackupDay" ] #Is fullBackupDay do a full backup!
 		then
+			toLog "Full Backup day"
 			isFull=true
 			#echo "Full"
 			doBackup
 			umountNow
 		elif [ "$(ls --hide=error.log --hide=lost+found $workDir)" ] # Directory is NOT empty except for error log and lost+found folder, do incremental backup
 		then
+			toLog "Found other files, backup marked as incremental"
 			isFull=false
 			#echo "Not empty Incremental"
 			doBackup
 			umountNow
-		else #Is not sunday but backup folder is empty (No previous full backups). Do a Full backup, cannot do incremental
+		else #Is not fullBackupDay but backup folder is empty (No previous full backups). Do a Full backup, cannot do incremental
+			toLog "Backups folder is empty, cannot do full"
 			#echo "else full"
 			isFull=true
 			doBackup
@@ -228,12 +635,13 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 	#
 	function umountNow
 	{	
+		toLog "Calling umount"
 		if [ "$Remote" == "true" ]
 		then
 			# If any error stoped the script from umounting the samba share unmounting NOW!
 	                {
-                	/bin/umount $smbPath 2>>$errorLog
-			} && { sayLoud "Unmounting share...succesful"; }|| { sayLoud "Unmounting...Failed! however Backup was most probably completed";leaveAndMail; }
+                	/bin/umount $smbMountPoint 2>>$errorLog
+			} && { sayLoud "Unmounting share...succesful"; }|| { checkErrorCode "$umount"; }
 		fi
 	}
 	
@@ -260,11 +668,11 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 			# Rename this backup as full
 			outputName="$fullBackupName"
 
-			sayLoud "Deleting current (local) backups"
+			sayLoud "Deleting current (local) backups..."
 
 			# Clean previous backups, locals first, this will remove everything but current log
-			/usr/bin/find $workDir -maxdepth 1 -not -iname "error.log" -not -type d -exec rm {} \; 2>>$errorLog && { sayLoud "Old (local) backups gone!"; } || { 
-			sayLoud "Could not erase old (local) backups, will quit!"; leaveAndMail; }
+			/usr/bin/find $workDir -maxdepth 1 -not -iname "error.log" -not -type d -exec rm {} \; 2>>$errorLog && { 
+			sayLoud "Old (local) backups gone!"; } || { sayLoud "Could not erase old (local) backups, will quit!"; leaveAndMail; }
 			
 			# Create the tar archive
 			tarIt $workDir
@@ -276,16 +684,23 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 				mountShare
 				checkShare
 
-			
-				# Move previous backups to another folder, move insted of erase to avoid ending up with no backups at all
+				# Move previous backups to another folder, move instead of erase to avoid ending up with no backups at all
 				# in the event that any error will break the process
 				cd $dumpPlace/
 				if [ "$(ls -A)" ] # Directory is NOT empty, move backups
 				then
+					# if set to true we must clean folder first
+					if [ "$removeOldBackups" == "true" ]
+					then
+						toLog "Trying to remove old backups"
+						/bin/rm $lastWeekBackupFolder/* && { sayLoud "Old backups removed!"; } || { 
+						sayLoud "Could not remove old backups...but I'll continue..."; }
+					fi
+					# Move last backup to $lastWeekBackupFolder
 					/bin/mv * $lastWeekBackupFolder/ 2>>$errorLog && { sayLoud "Old (remote) backups moved!"; } || { 
 					sayLoud "Could not move old (remote) backups, will quit!"; leaveAndMail; }
 				else
-					sayLoud "I could not found any remote backups!!!";
+					sayLoud "I could not found any remote backups. This usually means this is the first run OR backups were ereased";
 				fi
 
 				sayLoud "Ready to push new backups"
@@ -327,21 +742,36 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 	function alertLocalBackup()
 	{
 		sayLoud "Remote backups are disabled, backup will be saved on local file system only!"
+		# Successful backups is assumed if we reach this point
 		sayLoud "Backup save...succesful";
 	}
 
 	#
+	# Use this when remoteBackups were incomplete. 
+	#  First aler user, and if backup is incremental and $tranferAll is true do a complete transfer of backups. 
+	# If backups is full only alert user and continue
 	#
-	#
-	function alertNoRemoteFolder
+	function checkIncompleteBackups
 	{
+		toLog "No remote folder!"
+		toLog "I'll mark execution as dirty to inform of problem above via mail"
+		isDirty="true"
+
 		if [ "$isFull" == "true" ]
 		then
 			sayLoud "Since this is a FULL backup there should be no problems however since we recreated the backup folder you should probably look into why it did not existed in the first place"
-		else
-			sayLoud "Even after a successful folder creation keep in mind that only the most recen backup will be stored, since this is an incremental backup, this means that previous incrementals (if any) or prevoius FULL backups will not be stored on remote server, I will only transfer the most recently created backup, you can always override this behaviour via the transferAll flag"
-		fi
+		else # Meaning is an incremental backup
+			if [ "$transferAll" == "true" ]
+			then
+				sayLoud " This transfer may take longer than usual, cause we recreated the remote backup folder so Im about to send all current backups stored locally to remote server, please be patient."
 
+				/bin/cp $defaultBackupDir/*.tgz $dumpPlace/ 2>>$errorLog && { sayLoud "Backup save...sucessful!"; } || { 
+				sayLoud "Backup save...failed!";leaveAndMail;}
+
+			else
+				sayLoud "Even after a successful folder creation keep in mind that only the most recent backup will be stored, since this is an incremental backup, this means that previous incrementals (if any) or prevoius FULL backups will not be stored on remote server, I will only transfer the most recently created backup, you can always override this behaviour via the transferAll flag"
+			fi
+		fi
 	}
 
 	#
@@ -356,7 +786,7 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 		
 		## Append human friendly message, with name of the script and hostname, then append the log 
 		echo  > $mailmsg
-		echo "There was a problem with the execution of script " $0 " in the " $hostname " server. The error log is attached. ">> $mailmsg
+		echo "There was a problem with the execution of script " $0 " in server " $hostname ". The error log is attached. ">> $mailmsg
 		echo  >> $mailmsg
 		echo "===================  START ERROR LOG  ===================" >> $mailmsg
 		cat $errorLog >> $mailmsg
@@ -367,31 +797,80 @@ mailmsg="mailmsg.txt"					# Holds the mail content, not very elegant but functio
 		/bin/mail -s "$mailSubject" $who2mail < $mailmsg
 		
 		# Message content no longer relevant delete
-		rm $mailmsg
-
-		# If any error stoped the script from umounting the samba share unmounting NOW!
+		rm $mailmsg && { toLog "$mailmsg deleted!"; } || { toLog "Could not delete $mailmsg"; }
+		
+		# If any error stopped the script from unmounting the samba share unmounting NOW!
 		umountNow
+		
+		toLog "All must be done, about to quit"
 		#Ready to quit
 		exit
 	
 	}
 	
 	#
-	# Call at the start of the program to initialize the first params for the error log file, if function is not called at the script
-	# start then log file may not be complete or exists at all.
+	# Use it to check if execution was marked as dirty. If so log it and quit using leaveAndMail
+	#
+	function checkDirty()
+	{
+		if [ "$isDirty" == "true" ]
+		then
+		sayLoud "Execution was Dirty!"
+			if [ "$mailOnDirty" == "true" ]
+			then
+				leaveAndMail
+			else
+				toLog "MailOnDirty set=$mailOnDirty"
+			fi
+		fi
+
+	}
+	
+	function debugDump()
+	{
+		toLog "Variables data used:"
+		echo >> $errorLog
+		toLog "Backup mode, Remote=$Remote"
+		toLog "Backup target dir=$backupTargetDir"
+		toLog "SMB mount point=$smbMountPoint"
+		toLog "Server path=$serverPath"
+		toLog "Last Week backup folder=$lastWeekBackupFolder"
+		toLog "Files dump place=$dumpPlace"
+		toLog "Tar options=$tarOptions"
+		toLog "Tar exclusion list=$tarExcluded"
+		toLog "Credentials are not shown for security reasong. Change this is you want"
+	}
+	#
+	# Call at the start of the program to initialize the first params for the error log file. If function is not called at the script
+	# start then log file may not be complete.
 	#
 	function startLogger()
 	{
-		# Remove (old) log before wrinting to it
+		# Remove (old) log before writing to it
 		/bin/rm $errorLog &> /dev/null
-		now=`date +%c`
-		echo "Logging started...." $now > $errorLog
+
+		now=$(date +%c)
+
+		echo "$0 Script Error Log " > $errorLog
 		echo >> $errorLog
+		echo "Logging started...." $now >> $errorLog
+		echo >> $errorLog
+		
+		if [ "$debugging" == "true" ]
+		then
+			sayLoud "Debugging is ON"
+			echo >> $errorLog 
+			debugDump
+			echo >> $errorLog 
+		else
+			sayLoud "Debugging is OFF"
+			echo >> $errorLog
+		fi
 	}
 
 	# Run everything!	
-	workDir=$defaultbackupDir
+	workDir=$defaultBackupDir
 	startLogger
 	backup
-
+	checkDirty
 	exit
