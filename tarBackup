@@ -3,7 +3,7 @@
 ##################################################################################################################
 ##														##
 ##   tarBackup shell script v0.4, tested on RHEL 5								##
-##   Jorge A. Moreno fixed-term.jorge.moreno@us.bosch.com							##
+##   Jorge A. Moreno morenog.jorge@gmail.com									##
 ##   November 2011  Backup Bash Shell Script									##
 ##														##
 ##   Use script to backup your server using tar/gzip. It can copy the backup to a SMB share on another server, 	##
@@ -287,7 +287,7 @@ tarExcluded=" --exclude=error.log --exclude=/proc/* --exclude=/media/* --exclude
 #
 # This approach is not very secure!! Improve in later versions, for the time being chmod og-rwx (strip non root from r/w/x)
 #
-credentials="moj2ju%THISisMYnewPASS0!"
+credentials="user%pass"
 
 ###########################
 ##	Programs Names	 ##	
