@@ -1,0 +1,104 @@
+
+
+														
+   tarBackup shell script v0.5, tested on RHEL 5								
+   Jorge A. Moreno morenog.jorge@gmail.com									
+   November 2011  Backup Bash Shell Script									
+														
+   Use script to backup your server using tar/gzip. It can copy the backup to a SMB share on another server, 	
+   or just keep the backups locally if you wish. I've made some improvements since last versions, so its a	
+   little more smart now when something bad happens. It also tries to inform you every time something 	
+   unexpected happens so you always know what is going on. 							
+														
+  How to use the script:											
+														
+	To use the script, you need to set a few values first. It is recommended to read the script 		
+	working explanation below. Then you can set your own settings.  To use just drop the script 		
+	in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance		
+	is well configured you will be mailed of the script output. Anyway you will still be mail if something	
+	happens. 												
+														
+														
+	For detailed information about configuration and usage explanation consult the README file		
+														
+ >>>>	IF YOU DON'T WANNA READ DESCRIPTION AND JUST WANNA SET THE BACKUPS, DEFAULT OPTIONS ARE USUALLY OK <<<<	
+	However there are still variable you must set:								
+														
+	Default values are: Backups will be remote. Full Backup schedule for Sunday. Mail on dirty execution	
+														
+	Following MUST be set:											
+														
+	$backupTargetDir											
+	$credentials			==> Not necessary if $Remote set to false					
+	$smbMountPoint			==> Not necessary if $Remote set to false				
+	$serverPath			==> Not necessary if $Remote set to false				
+	$lastWeekBackupFolder		==> Not necessary if $Remote set to false				
+	$dumpPlace			==> Not necessary if $Remote set to false				
+														
+														
+   Explanation:												
+	You can override default behavior using flags. The default is as follows:				
+														
+	Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous 	
+	backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	
+	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to 	
+	a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if	
+	not it  tries to create it. If it can't it complains about it, same if it has no write permissions on 	
+	the share.												
+														
+	If things go well it checks for 'Remote' previous backups.If found this backups are then moved! 	
+	to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. 	
+	Share is then unmounted and script finishes execution.							
+   														
+	If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail 	
+	(default is set to root). The mail will be accompanied by a error log so you can check what went wrong.	
+														
+														
+   Overriding with flags											
+   														
+ 	You can check variables definition for detailed information, here is a list of things will you probably 
+	want to override with existent flags:									
+														
+	Remote Backups ($Remote): Remote backups can be made to be local only. Default: true			a
+														
+	Full Backup Day ($fullBackupDay): Sets the number of the day of the week when you would like to run	
+	a Full Backup. Day number is based on date program day starts on Monday (1). Default 7 (Sunday)		
+														
+	Mail On Dirty	($mailOnDirty): Controls whether you wanna receive a mail notification when script	
+	execution was marked as dirty. A dirty execution is when script encountered non fatal errors so		
+	it managed to finish. Default: true									
+														
+	Remove Old Backups ($removeOldBackups): We use the $lastWeekBackupFolder to store last week backups	
+	When script runs and connects to remote SMB share it moves your last weeks backups to that folder	
+	and puts the new backup in $dumpPlace. However after a few weeks that folders gets all previous backups	
+	and gets big in size. Use this to erase those backups, and hold ONLY the last week backup and not all	
+	previous backups. Default: false		 							
+														
+	Transfer All ($transferAll): Sometimes (for example) if files were modified manually things can get 	
+	messed up. Lets say someone erase your remote backups on a Monday. However you still have this week 	
+	local backups. When the script runs it assumes you are making a incremental backup cause of your have	
+ 	other incremental and FULL for this week but once the share is mounted and folder inspected it 		
+	realizes that the remote backups are none existent. This differs from your locals. So it alerts of it 	
+	saying that only the current incremental backup (the one we're doing today) will be transfered. 	
+	Use this flag to override this and transfer the missing backups too (previous incrementals and full)	
+	so you have a complete Full and incrementals in the remote location, just as you do locally. 		
+	Default: false						 						
+														
+ 	CHANGES in this version (v0.5)										
+														
+  - Improved checks on shares and local mount points								
+  - Flag $tranferAll is now working. Use it to tranfer all local backups if remotes are incomplete		
+  - Flag $removeOldBackups is now working. See comments on usage						
+  - Improved some error messages descriptions for better understanding					
+  - Other minor bugs and improvements										
+														
+														
+  TO DO's													
+	- Most programs are called without full path, all must use full path to avoid problems			
+	- $transferAll implementation is ugly, needs improvement						
+	- Debugging logger causes unneccesary overhead while checking if enabled. Needs changing		
+	- Current user and pass schema its insecure needs improvement						
+	- Try and reduce code further more and make it easier to understand					
+	- Allow easier adaptation to other servers (still too custom)						
+														
+
