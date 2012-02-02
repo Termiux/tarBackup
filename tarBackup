@@ -13,11 +13,11 @@
 ##														##
 ##  How to use the script:											##
 ##														##
-##	To use the script, you need to set a few values first. It is recommended to read the script 		##
-##	working explanation below. Then you can set your own settings.  To use just drop the script 		##
-##	in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance		##
-##	is well configured you will be mailed of the script output. Anyway you will still be mail if something	##
-##	happens. 												##
+##	To use the script, you need to set a few values first. Then you can set your own settings.  		##
+##														##
+##	To use just drop the script in /etc/cron.daily/ or set it editing crontab. After that just forget it.	##
+##	If your cron is well configured you will be mailed of the script output. Anyway you will still be 	##
+##	mailed if something bad happens you will always eb informed ;)						##
 ##														##
 ##														##
 ##	>>> For detailed information about configuration and usage explanation consult the README file	<<<	##
@@ -344,12 +344,12 @@ mailmsg=getMailMsgFile
 		if [ ! -d $path ]
 		then
 			# Default msg
-			sayLound "$path doen't exists, theres nothing to backup! I'll quit"
+			sayLoud "$path doen't exists, theres nothing to backup! I'll quit"
 			
 			# Display optional msg if var is set
 			if [ ! -z "$errorMsg" ]
 			then
-				sayLound $errorMsg
+				sayLoud $errorMsg
 			fi
 
 			leaveAndMail
@@ -370,12 +370,12 @@ mailmsg=getMailMsgFile
 		if [ ! -d $path ]
 		then
 			# Default msg
-			sayLound "$path doesn't exists!, I will try to create it"
+			sayLoud "$path doesn't exists!, I will try to create it"
 			
 			# Display optional msg if var is set
 			if [ ! -z "$errorMsg" ]
 			then
-				sayLound $errorMsg
+				sayLoud $errorMsg
 			fi
 
 			{
@@ -412,7 +412,7 @@ mailmsg=getMailMsgFile
 			# Display optional msg if var is set
 			if [ ! -z "$errorMsg" ]
 			then
-				sayLound $errorMsg
+				sayLoud $errorMsg
 			fi
 			leaveAndMail
 	
