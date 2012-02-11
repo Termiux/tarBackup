@@ -111,7 +111,7 @@ readonly debugging="false"
 ###################################################################
 
 #
-# Variables $transferAll and $removeOldBackups are part of TODO's their functionality is still not implemented
+# Variables $transferAll and $removeOldBackups tested and working
 
 #
 # Controls whether the script will transfer all the current backups if remote folder had to be created
