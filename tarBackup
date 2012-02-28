@@ -2,9 +2,9 @@
 
 ##################################################################################################################
 ##														##
-##   tarBackup shell script v0.5, tested on RHEL 5								##
+##   tarBackup shell script Tested on RHEL 5									##
 ##   Jorge A. Moreno morenog.jorge@gmail.com									##
-##   November 2011  Backup Bash Shell Script									##
+##   February 28 Backup Bash Shell Script									##
 ##														##
 ##   Use script to backup your server using tar/gzip. It can copy the backup to a SMB share on another server, 	##
 ##   or just keep the backups locally if you wish. I've made some improvements since last versions, so its a	##
@@ -235,9 +235,23 @@ umount='Umount program to Un mount samba shares'
 ##	   Programs Paths	 ##	
 ###################################
 
-#########################
-# >>>>	PENDING!!! <<<<	#
-#########################
+# Paths to binaries needed to avoid command not found problems
+
+_mv = $(/bin/mv)
+
+_cp = $(/bin/cp)
+
+_mktemp = $(/bin/mktemp)
+
+_mail = $(/etc/mail)
+
+_tar = $(/bin/tar)
+
+_mount = $(/bin/mount)
+
+_mountCifs = $(/sbin/mount.cifs)
+
+_umount = $(/bin/umount)
 
 
 ###########################
@@ -270,7 +284,7 @@ mailmsg=getMailMsgFile
 	function getMailMsgFile
 	{
 		# Create mail msg file
-		fileName=$(mktemp /tmp/mailMsg.XXXX) || { sayLoud "Could not create mail msg file! will fall back to old method";fileName="mailmsg.txt"; }
+		fileName=$($_mktemp /tmp/mailMsg.XXXX) || { sayLoud "Could not create mail msg file! will fall back to old method";fileName="mailmsg.txt"; }
 		return $fileName
 	}
 	#
@@ -290,7 +304,7 @@ mailmsg=getMailMsgFile
 		sayLoud "=============================== "
 		sayLoud "Mounting share to copy backup..."
 		{
-		/sbin/mount.cifs $serverPath $smbMountPoint/ -o user=$credentials 2>>$errorLog
+		$_mountCifs $serverPath $smbMountPoint/ -o user=$credentials 2>>$errorLog
 		} && { sayLoud "Mount...succesful"; }|| { sayLoud "Mount...Failed!";leaveAndMail; }
 
 	}
@@ -446,18 +460,18 @@ mailmsg=getMailMsgFile
 			sayLoud "Saving file please wait..."
 			sayLoud "Backup transfer started at `/bin/date`"
 			{ 
-				/bin/cp $defaultBackupDir/$outputName.tgz $dumpPlace/ 
+				$_cp $defaultBackupDir/$outputName.tgz $dumpPlace/ 
 			} && { sayLoud "Transfer completed at `/bin/date`";sayLoud "Backup save...succesful";}|| { 
 			sayLoud "Backup save...Failed! File transfer was interrupted. Backup could not be saved to its configured destination";leaveAndMail; }
 		
 			# Copy Incremental data file
-			/bin/cp $defaultBackupDir/log.snar $dumpPlace/ 2>>$errorLog
+			$_cp $defaultBackupDir/log.snar $dumpPlace/ 2>>$errorLog
 			toLog "Copy of incremental file called"
 		
 			toLog "About to copy errorLog to remote share. This will be the last line on remote errorLog this is expected"
 	
 			# From this point and on, messages will only appear on local errorLog
-			/bin/cp $errorLog $dumpPlace/
+			$_cp $errorLog $dumpPlace/
 			toLog "Copy of erroLog file called"
 		
 		fi
@@ -495,7 +509,7 @@ mailmsg=getMailMsgFile
 	{
 	sayLoud "Creating tar archive..."
 		{
-		tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir 2>>$errorLog
+		$_tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir 2>>$errorLog
 	
 		} && { sayLoud "Tar process...succesful";toLog "This means local file has been succesfully created"; }|| { checkErrorCode "$tar"; }
 	}	
@@ -631,7 +645,7 @@ mailmsg=getMailMsgFile
 		then
 			# If any error stoped the script from umounting the samba share unmounting NOW!
 	                {
-                	/bin/umount $smbMountPoint 2>>$errorLog
+                	$_umount $smbMountPoint 2>>$errorLog
 			} && { sayLoud "Unmounting share...succesful"; }|| { checkErrorCode "$umount"; }
 		fi
 	}
@@ -688,7 +702,7 @@ mailmsg=getMailMsgFile
 						sayLoud "Could not remove old backups...but I'll continue..."; }
 					fi
 					# Move last backup to $lastWeekBackupFolder
-					/bin/mv * $lastWeekBackupFolder/ 2>>$errorLog && { sayLoud "Old (remote) backups moved!"; } || { 
+					$_mv * $lastWeekBackupFolder/ 2>>$errorLog && { sayLoud "Old (remote) backups moved!"; } || { 
 					sayLoud "Could not move old (remote) backups, will quit!"; leaveAndMail; }
 				else
 					sayLoud "I could not found any remote backups. This usually means this is the first run OR backups were ereased";
@@ -756,7 +770,7 @@ mailmsg=getMailMsgFile
 			then
 				sayLoud " This transfer may take longer than usual, cause we recreated the remote backup folder so Im about to send all current backups stored locally to remote server, please be patient."
 
-				/bin/cp $defaultBackupDir/*.tgz $dumpPlace/ 2>>$errorLog && { sayLoud "Backup save...sucessful!"; } || { 
+				$_cp $defaultBackupDir/*.tgz $dumpPlace/ 2>>$errorLog && { sayLoud "Backup save...sucessful!"; } || { 
 				sayLoud "Backup save...failed!";leaveAndMail;}
 
 			else
@@ -785,7 +799,7 @@ mailmsg=getMailMsgFile
 		echo  >> $mailmsg
 		
 		## Appends done, send the mail
-		/bin/mail -s "$mailSubject" $who2mail < $mailmsg
+		$_mail -s "$mailSubject" $who2mail < $mailmsg
 		
 		# Message content no longer relevant delete
 		rm $mailmsg && { toLog "$mailmsg deleted!"; } || { toLog "Could not delete $mailmsg"; }

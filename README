@@ -84,17 +84,13 @@
 	so you have a complete Full and incrementals in the remote location, just as you do locally. 		
 	Default: false						 						
 														
- 	CHANGES in this version (v0.5)										
+ 	CHANGES in this version (Minor version)										
 														
-  - Improved checks on shares and local mount points								
-  - Flag $tranferAll is now working. Use it to tranfer all local backups if remotes are incomplete		
-  - Flag $removeOldBackups is now working. See comments on usage						
-  - Improved some error messages descriptions for better understanding					
-  - Other minor bugs and improvements										
+  - Minor bugs and improvements									
+  - Binaries are now called via a variable tha points to full path rather than full path on each call	
 														
 														
   TO DO's													
-	- Most programs are called without full path, all must use full path to avoid problems			
 	- $transferAll implementation is ugly, needs improvement						
 	- Debugging logger causes unneccesary overhead while checking if enabled. Needs changing		
 	- Current user and pass schema its insecure needs improvement						
