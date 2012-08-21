@@ -1,28 +1,30 @@
 
 
 														
-   tarBackup shell script v0.5, tested on RHEL 5								
-   Jorge A. Moreno morenog.jorge@gmail.com									
-   November 2011  Backup Bash Shell Script									
-														
-   Use script to backup your server using tar/gzip. It can copy the backup to a SMB share on another server, 	
-   or just keep the backups locally if you wish. I've made some improvements since last versions, so its a	
-   little more smart now when something bad happens. It also tries to inform you every time something 	
-   unexpected happens so you always know what is going on. 							
+   tarBackup shell script v0.5.2
+   Backup Bash Shell Script								
+   Tested on RHEL 5, and Debian 6
+   GitHub: https://github.com/Termiux/tarBackup
+
+   Jorge A. Moreno morenog.jorge@gmail.com
+   http://noobsysadmin.wordpress.com/
+
+
+   You can use the script to backup your server using tar/gzip. Script can copy the backup files to a SMB share on another server, or just keep the backups locally if you wish.
+
+   I've made some improvements, so its a little more smart now when something bad happens. 
+   It also tries to inform you every time something unexpected happens so you always know what is going on.
 														
   How to use the script:											
 														
-	To use the script, you need to set a few values first. It is recommended to read the script 		
-	working explanation below. Then you can set your own settings.  To use just drop the script 		
-	in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance		
-	is well configured you will be mailed of the script output. Anyway you will still be mail if something	
-	happens. 												
+	To use the script, you need to set a few values first. It is recommended to read the script working explanation below. Then you can set your own settings.  To use just drop the script in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance	is well configured you will be mailed of the script output. Anyway you will still be mail if something	happens. 												
 														
 														
-	For detailed information about configuration and usage explanation consult the README file		
 														
  >>>>	IF YOU DON'T WANNA READ DESCRIPTION AND JUST WANNA SET THE BACKUPS, DEFAULT OPTIONS ARE USUALLY OK <<<<	
 	However there are still variable you must set:								
+
+	*** Open the file tarBackup, variables that MUST be set are marked so ***
 														
 	Default values are: Backups will be remote. Full Backup schedule for Sunday. Mail on dirty execution	
 														
@@ -86,15 +88,18 @@
 														
  	CHANGES in this version (Minor version)										
 														
-  - Minor bugs and improvements									
-  - Binaries are now called via a variable tha points to full path rather than full path on each call	
-														
-														
-  TO DO's													
-	- $transferAll implementation is ugly, needs improvement						
-	- Debugging logger causes unneccesary overhead while checking if enabled. Needs changing		
-	- Current user and pass schema its insecure needs improvement						
-	- Try and reduce code further more and make it easier to understand					
-	- Allow easier adaptation to other servers (still too custom)						
+  - Minor bugs caused by spaces on certain bash versions.
+  - Added new flah $mailNonFatalErrors, default is true, but you can set it to false to decrease the amout of mails you recive
+  - Binaries are now called via a variable tha points to full path rather than full path on each call (all binaries, some were missing from las commit)
+	
+  TO DO's
+	- $transferAll implementation is ugly, needs improvement
+	- Debugging logger causes unneccesary overhead while checking if enabled. Needs changing
+	- Current user and pass schema its insecure needs improvement		
+	- Try and reduce code further more and make it easier to understand
+	- Allow easier adaptation to other servers (still too custom)
+	- Improve the isDirty mechanism
+	- Improve the checkErrorCode mechanism to make it easier to use
+					
 														
 
