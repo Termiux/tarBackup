@@ -73,13 +73,15 @@ readonly fullBackupDay="7"
 #
 isFull="true"
 
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Controls whether the backup will be saved in a remote location or it will be saved on local file system. False means backup is local only
 #
 readonly Remote="false"
 
 #
-# If script runs and finds non fatal errors it will mark execution as dirty. Dirty execution logs are sent to root. By default execution is not
+# If script runs and finds errors it will mark execution as dirty. Dirty execution logs are sent to root. By default execution is not
 # dirty unless marked otherwise. This usually happens when a program return a none zero exit.
 #
 isDirty="false"
@@ -90,11 +92,13 @@ isDirty="false"
 #
 readonly tarOptions="czpf"
 
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Tar exclusion folders list. This is ugly, we could have easily used -X option and point to a exclusion list file but I don't like to work with many
 # files. If you don't like it you can easily change it ;)
 #
-tarExcluded=" --exclude=error.log --exclude=/proc/* --exclude=/media/* --exclude=/dev/* --exclude=/mnt/* --exclude=/sys/* --exclude=/tmp/* --exclude=/data/* --exclude=/images/* --exclude=/serverBackups --exclude=/home/moj2ju/Desktop/ --exclude=/usr/share/doc"
+tarExcluded=" --exclude=error.log --exclude=/proc/* --exclude=/media/* --exclude=/dev/* --exclude=/mnt/* --exclude=/sys/* --exclude=/tmp/* --exclude=/serverBackups --exclude=/usr/share/doc"
 
 #
 # If true mail will be deliver to $who2mail whenever script execution is marked as dirty.
@@ -110,6 +114,12 @@ readonly debugging="false"
 ###################################################################
 ##		Remote backups exclusive variables		 ##
 ###################################################################
+
+###################
+#
+# Variables in this section only need to be set IF you set the $remoteBackup variable to true
+#
+###################
 
 #
 # Variables $transferAll and $removeOldBackups tested and working
@@ -137,6 +147,9 @@ remoteBackupIncomplete="false"
 ##	   Paths	 ##	
 ###########################
 
+
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Set the directory you want to make a backup of. Point it to root if you wanna backup all the server data. 
 # If you need to exclude certain folders, set this to those folder parent and then set the exclude list in the 
@@ -144,6 +157,8 @@ remoteBackupIncomplete="false"
 #
 readonly backupTargetDir="/"
 
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Sets the default backups directory, all backups are saved here. If $Remote set to true, this is what will be copied to SMB share
 #
@@ -154,11 +169,15 @@ readonly defaultBackupDir="/serverBackups"
 #
 workDir=$defaultBackupDir
 
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Used by the Mount and Umount programs to (u)mount the SMB share make sure is valid!
 #
 smbMountPoint="/mnt/samba"						
 
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Server address. You can set and ip and route to the SMB share or name and route
 # Example //server.mycompany.com/SMBshare/folder
@@ -193,6 +212,8 @@ snarLog="$workDir"/log.snar
 ##	   Samba	 ##	
 ###########################
 
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Credentials to authenticate on the SMB share. If (when) this change SMB mount will fail if authentication is needed
 #
@@ -209,6 +230,9 @@ credentials="user%pass"
 
 #
 # Following variables are used for error code checking, you can use this to signal who you wanna check via the checkErroCode function
+# 
+# NOTE: This section is for debugging and further developing, as user you dont really need to change anything in here. All this are related
+#       to the checkErroCode function. For more information check the 'checkErrorCode' function
 #
 
 #
@@ -236,11 +260,22 @@ umount='Umount program to Un mount samba shares'
 ##	   Programs Paths	 ##	
 ###################################
 
+
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
+#
+#	Change this to reflect you distro commands paths
 # Paths to binaries needed to avoid command not found problems
 
 _mv=$(/bin/mv)
 
+_rm=$(/bin/rm)
+
 _cp=$(/bin/cp)
+
+_find=$(/bin/find)
+
+_date=$(/bin/date)
 
 _mktemp=$(/bin/mktemp)
 
@@ -259,6 +294,10 @@ _umount=$(/bin/umount)
 ##	   Mail		 ##	
 ###########################
 
+
+###################################################################################################################################
+# 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
+#
 #
 # Who do we mail when something breaks. Default set to root
 # This approach assumes you already have your mail server configured. If not mail will only be delivered locally only
@@ -274,10 +313,10 @@ mailSubject="There was a problem with the backups"
 #
 # Holds the email message file name. This is used to store the mail message when something breaks and someone must be informed
 #
-mailmsg=getMailMsgFile
+mailmsg=$(getMailMsgFile)
 	
 	#
-	# Create a tmp file via the mktemp program, this should help to create unique filenames, if it fails by any reason,
+	# Create a tmp file via the mktemp program, this should help to create unique filenames, if it fails for any reason,
 	# it complains and function falls back to the old schema (used in previous versions).
 	#
 	# Returns Mail Message File Name
@@ -299,7 +338,7 @@ mailmsg=getMailMsgFile
 	function mountShare()
 	{
 		# Sometime permission problems blocks the script from overwriting log. Erase old log before proceeding
-		/bin/rm $dumpPlace/error.log  2>/dev/null
+		$_rm $dumpPlace/error.log  2>/dev/null
 		toLog "Rm called for OLD error log"
 		
 		sayLoud "=============================== "
@@ -321,7 +360,7 @@ mailmsg=getMailMsgFile
 		# and do some aditional logic, set remoteBackupIncomplete flag to true and log it
 		{
 		 checkPathExistence $dumpPlace 
-		}|| { remoteBackupIncomplete="true";toLog "Remote backup incomplete"; }
+		}|| { remoteBackupIncomplete="true";toLog "Directory $dumpPlace had to be recreated, you will need to check manually for missing previous backups on $dumpPlance "; }
 
 		checkPathExistence $lastWeekBackupFolder
 
@@ -441,6 +480,7 @@ mailmsg=getMailMsgFile
 	#
 	function saveBackup()
 	{
+		# Set as a reminder to later implement speed mesurements in data transmission
 		#size=$(du $defaultBackupDir/$outputName.tgz | awk '{ print $1 }')
 
 		# Checks if incomplete for alerts and possible transferAll mechanism
@@ -459,10 +499,10 @@ mailmsg=getMailMsgFile
 
 			# Copy files and tell user copy is in progress
 			sayLoud "Saving file please wait..."
-			sayLoud "Backup transfer started at `/bin/date`"
+			sayLoud "Backup transfer started at $_date"
 			{ 
 				$_cp $defaultBackupDir/$outputName.tgz $dumpPlace/ 
-			} && { sayLoud "Transfer completed at `/bin/date`";sayLoud "Backup save...succesful";}|| { 
+			} && { sayLoud "Transfer completed at $_date";sayLoud "Backup save...succesful";}|| { 
 			sayLoud "Backup save...Failed! File transfer was interrupted. Backup could not be saved to its configured destination";leaveAndMail; }
 		
 			# Copy Incremental data file
@@ -516,29 +556,50 @@ mailmsg=getMailMsgFile
 	}	
 
         #
-        # Checks other programs error codes, you need to pass who (program) had the error for the fucntion
-        # to process the logic. Each program has its own error codes so before adding them here check man pages
-        # or other documentation. You can find a list of who on the top of the script
+        # Checks other programs error codes, you need to pass who (what program) caused the error, soe the fucntion
+        # can process the logic. 
+	#
+	# The porpouse of this functions is to allow the script to "permit" a certain degree of errors from the programs
+	# without completly failing or interrumping scritp behavior. With this function you can check what program failed, then
+	# make the logic to trap the error code you wanna catch, and instead of completly failing and exiting only output something
+	# and continue to operate normally.
+	#
+	# Each program has its own error codes so before adding them here check man pages
+        # or other documentation for each program. You can find a list of who on the top of the script, the listed of called commands
         #
         # Example: checkErrorCode "$who"  It is important to use the quotes
         #
-        # To check for Tar error codes you should call it like this: checkErrorCode "$tar" Then you can implement your tar
-        # exclusive logic in the function for the appropiate error code.
+        # To check for Tar error codes you should call it like this: 
+	#
+	# checkErrorCode "$tar" 
+	#
+	# Then you can implement your tar exclusive logic in the function for the appropiate error code.
         #
+	# In the tar implementation below we allow the script to continue without completly quitting, this allows tar to
+	# output errors, wich will trip the leaveAndMail function (that in turn will log error, mail root and quit)
 	function checkErrorCode
 	{
 		errorCode=$? # we have to preserve error code cause it will be overwrite on any next command execution
-		who=$1
-		# Since we did have errors even if non fatal mark execution as dirty to send mail to root
-		isDirty="true"
-		toLog "Execution just marked as dirty"
-		toLog "By $who with Error code $errorCode"
-		# Tar section
+		who=$1 	# The guilty program
 
+		# If the $mailNonFatalErrors variable is set to true, mark execution as dirty to trip log and mail to root
+		if [ "$mailNonFatalErrors" == "true" ]
+		then
+			sayLoud "Will mark execution dirty, but this are non fatal errors. See the checkErrorCode function for more info"
+			isDirty="true"
+
+			toLog "Execution just marked as dirty"
+			toLog "By $who with Error code $errorCode"
+		fi
+
+
+		#################################
+		#	    Tar Section	        #
+		#################################
 		if [ "$who" == "$tar" ]
 		then
 
-			# Tar error code number 2 means that Tar finished with errors but but finished anyway
+			# Tar error code number 2 means that Tar finished with errors but finished anyway
 			# so its ussually ok to keep script running even when this happens
 			if [ "$errorCode" == 2 ]
 			then
@@ -547,6 +608,7 @@ mailmsg=getMailMsgFile
 					sayLoud "Tar process...had some errors but managed to finish archive...lets continue"
 				else
 					sayLoud "Tar process...Failed! Archive file could not be created check error log"
+					toLog "This IS a fatal error"
 					leaveAndMail
 				fi
 				#return 0;
@@ -575,7 +637,7 @@ mailmsg=getMailMsgFile
 				exit
 			else
 				sayLoud "Unmounting...Failed! This is no relevant to the Backup, however you may want to try and umount SMB share mannualy"
-				toLog "about to call leaveAndMail via checkErroCode function"
+				toLog "This IS a fatal error"
 				leaveAndMail
 			fi
 		fi
@@ -677,7 +739,7 @@ mailmsg=getMailMsgFile
 			sayLoud "Deleting current (local) backups..."
 
 			# Clean previous backups, locals first, this will remove everything but current log
-			/usr/bin/find $workDir -maxdepth 1 -not -iname "error.log" -not -type d -exec rm {} \; 2>>$errorLog && { 
+			$_find $workDir -maxdepth 1 -not -iname "error.log" -not -type d -exec rm {} \; 2>>$errorLog && { 
 			sayLoud "Old (local) backups gone!"; } || { sayLoud "Could not erase old (local) backups, will quit!"; leaveAndMail; }
 			
 			# Create the tar archive
@@ -699,7 +761,7 @@ mailmsg=getMailMsgFile
 					if [ "$removeOldBackups" == "true" ]
 					then
 						toLog "Trying to remove old backups"
-						/bin/rm $lastWeekBackupFolder/* && { sayLoud "Old backups removed!"; } || { 
+						$_rm $lastWeekBackupFolder/* && { sayLoud "Old backups removed!"; } || { 
 						sayLoud "Could not remove old backups...but I'll continue..."; }
 					fi
 					# Move last backup to $lastWeekBackupFolder
@@ -844,7 +906,7 @@ mailmsg=getMailMsgFile
 		toLog "Files dump place=$dumpPlace"
 		toLog "Tar options=$tarOptions"
 		toLog "Tar exclusion list=$tarExcluded"
-		toLog "Credentials are not shown for security reasong. Change this is you want"
+		toLog "Credentials are not shown for security reason. Change this is you want"
 	}
 	#
 	# Call at the start of the program to initialize the first params for the error log file. If function is not called at the script
@@ -853,7 +915,7 @@ mailmsg=getMailMsgFile
 	function startLogger()
 	{
 		# Remove (old) log before writing to it
-		/bin/rm $errorLog &> /dev/null
+		$_rm $errorLog &> /dev/null
 
 		now=$(date +%c)
 
