@@ -282,7 +282,7 @@ _date=$(whereis date | awk '{print $2}')
 
 _mktemp=$(whereis mktemp | awk '{print $2}')
 
-_mail=$(whereis mail | awk '{print $2}'
+_mail=$(whereis mail | awk '{print $2}')
 
 _tar=$(whereis tar | awk '{print $2}')
 
