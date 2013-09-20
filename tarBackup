@@ -109,7 +109,7 @@ readonly mailOnDirty="true"
 # Off by default. Can be used to test for problems, it will output to errorLog ONLY. It outputs some variables data used and
 # other performed steps.
 #
-readonly debugging="false"
+readonly debugging="true"
 
 ###################################################################
 ##		Remote backups exclusive variables		 ##
@@ -155,14 +155,14 @@ remoteBackupIncomplete="false"
 # If you need to exclude certain folders, set this to those folder parent and then set the exclude list in the 
 # proper variable.
 #
-readonly backupTargetDir="/"
+readonly backupTargetDir="/home/admin/testBkpFolder"
 
 ###################################################################################################################################
 # 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
 #
 # Sets the default backups directory, all backups are saved here. If $Remote set to true, this is what will be copied to SMB share
 #
-readonly defaultBackupDir="/serverBackups"
+readonly defaultBackupDir="/home/admin/Backups"
 
 #
 # Helper variable. Holds the current path we are working into. Unlike defaultBackupDir this changes over script execution
@@ -305,7 +305,7 @@ _umount=$(whereis umount | awk '{print $2}')
 # Who do we mail when something breaks. Default set to root
 # This approach assumes you already have your mail server configured. If not mail will only be delivered locally only
 #
-who2mail="root@localhost"
+who2mail="morenog.jorge@gmail.com"
 
 #
 # Mail subject when something breaks
