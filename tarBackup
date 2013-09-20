@@ -267,27 +267,30 @@ umount='Umount program to Un mount samba shares'
 #	Change this to reflect you distro commands paths
 # Paths to binaries needed to avoid command not found problems
 
-_mv=$(/bin/mv)
+#_awk='/usr/bin/awk/'
+#_whereis='/usr/bin/whereis'
 
-_rm=$(/bin/rm)
+_mv=$(whereis mv | awk '{print $2}')
 
-_cp=$(/bin/cp)
+_rm=$(whereis rm | awk '{print $2}')
 
-_find=$(/bin/find)
+_cp=$(whereis cp | awk '{print $2}')
 
-_date=$(/bin/date)
+_find=$(whereis find | awk '{print $2}')
 
-_mktemp=$(/bin/mktemp)
+_date=$(whereis date | awk '{print $2}')
 
-_mail=$(/etc/mail)
+_mktemp=$(whereis mktemp | awk '{print $2}')
 
-_tar=$(/bin/tar)
+_mail=$(whereis mail | awk '{print $2}'
 
-_mount=$(/bin/mount)
+_tar=$(whereis tar | awk '{print $2}')
 
-_mountCifs=$(/sbin/mount.cifs)
+_mount=$(whereis mount | awk '{print $2}')
 
-_umount=$(/bin/umount)
+_mountCifs=$(whereis mount | awk '{print $2}')
+
+_umount=$(whereis umount | awk '{print $2}')
 
 
 ###########################
