@@ -1,26 +1,30 @@
 
 source '../conf/config.sh' 2>/dev/null
 	
-	#
-	# Create a tmp file via the mktemp program, this should help to create unique filenames, if it fails for any reason,
-	# it complains and function falls back to the old schema (used in previous versions).
-	#
-	# Returns Mail Message File Name
-	#
+	################################################################################################################################
+	##	Create a tmp file via the mktemp program, this should help to create unique filenames, if it fails for any reason
+	## 	it complains and function falls back to the old schema (used in previous versions).
+	##
+	##	Returns Mail Message File Name
+	################################################################################################################################
 	function getMailMsgFile
 	{
 		# Create mail msg file
 		fileName=$($_mktemp /tmp/mailMsg.XXXX) || { sayLoud "Could not create mail msg file! will fall back to old method";fileName="/tmp/mailmsg.txt"; }
 		return $fileName
 	}
+
 	#
-	# Mounts the SMB network share, currently it connects to $serverPath share and it mounts it in $smbMountPoint 
-	# Current credentials are static and set in Samba variables section.
-	# If (when) this credentials change script will fail to execute.
-	#
-	# If there's a problem mounting the share then it tries to umount it (just to be on the safe side, via leaveAndMail), 
-	# See leaveAndMail function for details
-	#
+	################################################################################################################################
+	##
+	##	Mounts the SMB network share, currently it connects to $serverPath share and it mounts it in $smbMountPoint 
+	##	Current credentials are static and set in Samba variables section.
+	## 	If (when) this credentials change script will fail to execute.
+	##
+	## 	If there's a problem mounting the share then it tries to umount it (just to be on the safe side, via leaveAndMail)
+	##	See leaveAndMail function for details
+	##
+	################################################################################################################################
 	function mountShare()
 	{
 		# Sometime permission problems blocks the script from overwriting log. Erase old log before proceeding
@@ -29,23 +33,22 @@ source '../conf/config.sh' 2>/dev/null
 
 		if [ -e $smbMountPoint]
 		then
-		
 			sayLoud "=============================== "
 			sayLoud "Mounting share to copy backup..."
 			{
 			$_mountCifs $serverPath $smbMountPoint/ -o user=$credentials 2>>$errorLog
 			} && { sayLoud "Mount...succesful"; }|| { sayLoud "Mount...Failed!";leaveAndMail; }
-		
 		else
 			sayLoud "$smbMountPoint its already mounted"	
 			toLog "No need to call mount lets continue..."
 		fi
-
 	}
 
-	#
-	# Checks for folders existence and appropriate permissions on them before attempting to save the backup files
-	#
+	################################################################################################################################
+	##
+	## 	Checks for folders existence and appropriate permissions on them before attempting to save the backup files
+	##
+	################################################################################################################################
 	function checkShare
 	{
 		checkPathExistence $smbMountPoint
@@ -66,9 +69,11 @@ source '../conf/config.sh' 2>/dev/null
 		# If passed all above then continue
 	}
 
-	#
-	# Check that local paths to be acces exist before using them
-	#
+	################################################################################################################################
+	##
+	##	Check that local paths to be acces exist before using them
+	##
+	################################################################################################################################
 	function checkLocalPaths
 	{
 
@@ -80,10 +85,12 @@ source '../conf/config.sh' 2>/dev/null
 
 	}
 	
-	#
-	# Checks if the folder we want to backup exists, if not we should quit, nothing to backup
-	# $1(Arg 1) (optional) Error message to display via sayLoud
-	#
+	################################################################################################################################
+	##
+	##	Checks if the folder we want to backup exists, if not we should quit, nothing to backup
+	##	$1(Arg 1) (optional) Error message to display via sayLoud
+	##
+	################################################################################################################################
 	function checkBackupTarget
 	{
 		path=backupTargetDir
@@ -104,12 +111,13 @@ source '../conf/config.sh' 2>/dev/null
 		fi
 	}
 	
-	
-	#
-	# Use this to check paths existence
-	# $1 (Arg 1) the path to check
-	# $2 (Arg 2) (optional) Error message to display via sayLoud
-	#
+	################################################################################################################################
+	##
+	##	Use this to check paths existence
+	##	$1 (Arg 1) the path to check
+	##	$2 (Arg 2) (optional) Error message to display via sayLoud
+	##
+	################################################################################################################################
 	function checkPathExistence
 	{
 		path=$1
@@ -139,16 +147,15 @@ source '../conf/config.sh' 2>/dev/null
 		else
 			toLog "Path: $1 exists, check passed"
 		fi
-
-	
 	}
 
-
-	#
-	# Use this to check for write permissions on a path
-	# $1 (Arg 1) the path to check
-	# $2 (Arg 2) (optional) Error message to display via sayLoud
-	#
+	################################################################################################################################
+	##
+	##	Use this to check for write permissions on a path
+	##	$1 (Arg 1) the path to check
+	##	$2 (Arg 2) (optional) Error message to display via sayLoud
+	##
+	################################################################################################################################
 	function checkWritePermissions
 	{
 		path=$1
@@ -175,10 +182,12 @@ source '../conf/config.sh' 2>/dev/null
 
 	}
 	
-	#
-	# Informs the user that backup copy is in progress and then it proceeds to copy backup files to the recipient server.
-	# After copy to remote server is done, the samba share is unmounted 
-	#
+	################################################################################################################################
+	##
+	##	Informs the user that backup copy is in progress and then it proceeds to copy backup files to the recipient server.
+	##	After copy to remote server is done, the samba share is unmounted 
+	##
+	################################################################################################################################
 	function saveBackup()
 	{
 		# Set as a reminder to later implement speed mesurements in data transmission
@@ -219,18 +228,22 @@ source '../conf/config.sh' 2>/dev/null
 		fi
 	}
 	
-	#
-	# use this function to output to user (or console) while also saving the output to the log file
-	#
+	################################################################################################################################
+	##
+	##	Use this function to output to user (or console) while also saving the output to the log file
+	##
+	################################################################################################################################
 	function sayLoud()
 	{
 		echo $1
 		echo $1 >>$errorLog
 	}
 
-	#
-	# Use to save args to error log file. Only saves the info if debugging is ON.
-	#
+	################################################################################################################################
+	##
+	##	Use to save data to error log file. Only saves the info if debugging is ON.
+	##
+	################################################################################################################################
 	function toLog()
 	{
 		if [ "$debugging" == "true" ]
@@ -239,46 +252,55 @@ source '../conf/config.sh' 2>/dev/null
 		fi
 	}
 
-	#
-	# Creates a tar archives from the $backupTargetDir directory (ussually / ), it excludes as many directories as needed
-	#
-	# If more are needed simply add them.
-	# The function excludes this backup file folder (itself) to avoid recursion ;)
-	#
-	# Now the backup is incremental, the incremental info in saved in a file name log.snar extension is as specified in tar docs
-	#
+	################################################################################################################################
+	##
+	##	Creates a tar archives from the $backupTargetDir directory (ussually / ), it excludes as many directories as needed
+	##
+	##	If more are needed simply add them.
+	##	The function excludes this backup file folder (itself) to avoid recursion ;)
+	##
+	##	Now the backup is incremental, the incremental info in saved in a file name log.snar extension is as specified in tar docs
+	##
+	################################################################################################################################
 	function tarIt()
 	{
 	sayLoud "Creating tar archive..."
 		{
 		$_tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir 2>>$errorLog
 	
-		} && { sayLoud "Tar process...succesful";toLog "This means local file has been succesfully created"; }|| { toLog "Tar was executed like this: 
-	$_tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir";checkErrorCode "$tar"; }
+		} && { 
+			sayLoud "Tar process...succesful";toLog "This means local file has been succesfully created"; 
+			}|| 
+			{ toLog "Tar was executed like this: 
+			$_tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir";checkErrorCode "$tar"; 
+			}
 	}	
 
-        #
-        # Checks other programs error codes, you need to pass who (what program) caused the error, soe the fucntion
-        # can process the logic. 
-	#
-	# The porpouse of this functions is to allow the script to "permit" a certain degree of errors from the programs
-	# without completly failing or interrumping scritp behavior. With this function you can check what program failed, then
-	# make the logic to trap the error code you wanna catch, and instead of completly failing and exiting only output something
-	# and continue to operate normally.
-	#
-	# Each program has its own error codes so before adding them here check man pages
-        # or other documentation for each program. You can find a list of who on the top of the script, the listed of called commands
-        #
-        # Example: checkErrorCode "$who"  It is important to use the quotes
-        #
-        # To check for Tar error codes you should call it like this: 
-	#
-	# checkErrorCode "$tar" 
-	#
-	# Then you can implement your tar exclusive logic in the function for the appropiate error code.
-        #
-	# In the tar implementation below we allow the script to continue without completly quitting, this allows tar to
-	# output errors, wich will trip the leaveAndMail function (that in turn will log error, mail root and quit)
+	################################################################################################################################
+        ##
+        ##	Checks other programs error codes, you need to pass who (what program) caused the error, so the fucntion
+        ##	can process the logic. 
+	##
+	##	The porpouse of this functions is to allow the script to "permit" a certain degree of errors from the programs
+	##	without completly failing or interrumping scritp behavior. With this function you can check what program failed, then
+	##	make the logic to trap the error code you wanna catch, and instead of completly failing and exiting only output something
+	##	and continue to operate normally.
+	##
+	##	Each program has its own error codes so before adding them here check man pages
+        ##	or other documentation for each program. You can find a list of who on the top of the script, the listed of called commands
+        ##
+        ##	Example: checkErrorCode "$who"  It is important to use the quotes
+        ##
+        ## 	To check for Tar error codes you should call it like this: 
+	##
+	## 	checkErrorCode "$tar" 
+	##
+	## 	Then you can implement your tar exclusive logic in the function for the appropiate error code.
+        ##
+	##	In the tar implementation below we allow the script to continue without completly quitting, this allows tar to
+	##	output errors, which will trip the leaveAndMail function (that in turn will log error, mail root and quit)
+	##
+	################################################################################################################################
 	function checkErrorCode
 	{
 		errorCode=$? # we have to preserve error code cause it will be overwrite on any next command execution
@@ -366,13 +388,17 @@ source '../conf/config.sh' 2>/dev/null
 
 	}
 
-	#
-	# This functions calls doBackup according how the backup will be, incremental or full. This depends on 2 things
-	# Number 1, if today is $fullBackupDay, a full backup will be started. Number 2 if no previos backups were found, run full
-	# if none of those were present assume backup is incremental. Bear in mind (however) that the check is only local
-	# we don't check for previous remote backups. That is if locally we have a previous full and we'r doing incremental
-	# we will only transfer that incremetal to the SMB share. We never check if all files in here are also there, we asume they are.
-	#
+	################################################################################################################################
+	##
+	##	This functions calls doBackup according to the backup mode (incremental or full). This depends on 2 things
+	##	-Number 1, if today is $fullBackupDay, a full backup will be started. 
+	##	-Number 2 if no previos backups were found, run full
+	##
+	##	If none of those were present assume backup is incremental. Bear in mind (however) that the check is only local
+	##	we don't check for previous remote backups. That is if locally we have a previous full and we'r doing incremental
+	##	we will only transfer that incremetal to the SMB share. We never check if all files in here are also there, we asume they are.
+	##
+	#################################################################################################################################
 	function backup()
 	{
 		if [ "$weekDay" == "$fullBackupDay" ] #Is fullBackupDay do a full backup!
@@ -400,10 +426,12 @@ source '../conf/config.sh' 2>/dev/null
 		sayLoud "All done"
 	}
 
-	#
-	# Use this function to umount the SMB share, it checks if backups was set to remote before calling umount
-	# if true umount otherwise no point in calling it
-	#
+	################################################################################################################################
+	##
+	##	Use this function to umount the SMB share, it checks if backups was set to remote before calling umount
+	##	if true umount otherwise no point in calling it
+	##
+	################################################################################################################################
 	function umountNow
 	{	
 		toLog "Calling umount"
@@ -416,19 +444,23 @@ source '../conf/config.sh' 2>/dev/null
 		fi
 	}
 	
-	#
-	# This is the actual worker, this function will call all the others in order according with a set of conditions
-	#
-	# If the backup is marked as FULL then erease old backups in $defaultBackupDir then tar and gzip the $backupTargetDir
-	# mount the SMB share and MOVE old backups to $lastWeekBackupFolder (if any old backups) to finish save the backup files 
-	# to the SMB share
-	# 
-	# If backup is marked as NON full ($isFull=false) tar and gzip incremental then mount SMB share and copy the files to it
-	#
-	# Another check has been added to the script so that it verifies whether the backup is marked as a RemoteBackup or not,
-	# if marked as local only then, share wonnt be mounted and no transfer will happen with remote server, only tar ang gzip
-	# will be called and backup will remain $defautlbackupDir
-	#
+	################################################################################################################################
+	##
+	##	This is the actual worker, this function will call all the others in order according with a set of conditions
+	##	
+	##	Summary of behavior
+	##
+	##	If the backup is marked as FULL then erease old backups in $defaultBackupDir then tar and gzip the $backupTargetDir
+	##	mount the SMB share and MOVE old backups to $lastWeekBackupFolder (if any old backups) to finish save the backup files 
+	##	to the SMB share
+	## 
+	##	If backup is marked as NON full ($isFull=false) tar and gzip incremental then mount SMB share and copy the files to it
+	##
+	##	Another check has been added to the script so that it verifies whether the backup is marked as a RemoteBackup or not,
+	##	if marked as local only then, share wont be mounted and no transfer will happen with remote server, only tar ang gzip
+	##	will be called and backup will remain $defautlbackupDir
+	##
+	################################################################################################################################
 	function doBackup
 	{
 		if [ "$isFull" == "true" ]
@@ -507,9 +539,11 @@ source '../conf/config.sh' 2>/dev/null
 		fi
 	}
 	
-	#
-	# Alert that backup is only happening on the local filesystem
-	#
+	################################################################################################################################
+	##
+	##	Alert that backup is only happening on the local filesystem
+	##
+	################################################################################################################################
 	function alertLocalBackup()
 	{
 		sayLoud "Remote backups are disabled, backup has been saved on local file system!!"
@@ -517,11 +551,13 @@ source '../conf/config.sh' 2>/dev/null
 		sayLoud "Backup save...succesful";
 	}
 
-	#
-	# Use this when remoteBackups were incomplete. 
-	#  First aler user, and if backup is incremental and $tranferAll is true do a complete transfer of backups. 
-	# If backups is full only alert user and continue
-	#
+	################################################################################################################################
+	##
+	##	This is used when remoteBackups were incomplete. 
+	##	First alerts user, and if backup is incremental and $tranferAll is true do a complete transfer of backups. 
+	##	If backups is full only alert user and continue
+	##
+	################################################################################################################################
 	function checkIncompleteBackups
 	{
 		#We know remot backups are incomplete cause we mark it so when we found NO REMOTE folder. So we create it, that means there are no prior incrementals there
@@ -547,20 +583,25 @@ source '../conf/config.sh' 2>/dev/null
 		fi
 	}
 
-	#
-	# Use this function to signal an important error that will make the script fail and exit. This will send an informative mail to $whom2mail person
-	# letting them know there was a problem with the backups,.
-	#
-	# The content of the mail is stored in the variable $mailmsg. The error log is appended along with a human friendly message to the content
-	# of the message, to identify the problem.
-	#
+	################################################################################################################################
+	##
+	##	Use this function to signal an important error that will make the script fail and exit. This will send an informative
+	##	mail to $whom2mail letting them know there was a problem with the backups.
+	##
+	##	The content of the mail is stored in $mailmsg. The error log is appended along with a human friendly message
+	##
+	################################################################################################################################
 	function leaveAndMail()
 	{
 		
 		## Append human friendly message, with name of the script and hostname, then append the log 
 		echo  > $mailmsg
-		echo "There was a problem with the execution of script $0 in server $hostname" >> $mailmsg
+		echo "There was a problem with a script execution please check the infroamtion below to diagonose" >> $mailmsg
+		echo "Script: $0" >> $mailmsg
+		echo "Hostname: $hostname" >> $mailmsg
+		echo  >> $mailmsg
 		echo "The error log is attached. ">> $mailmsg
+		echo  >> $mailmsg
 		echo  >> $mailmsg
 		echo "===================  START ERROR LOG  ===================" >> $mailmsg
 		cat $errorLog >> $mailmsg
@@ -582,9 +623,12 @@ source '../conf/config.sh' 2>/dev/null
 	
 	}
 	
-	#
-	# Use it to check if execution was marked as dirty. If so log it and quit using leaveAndMail
-	#
+	################################################################################################################################
+	##
+	##	Use it to check if execution was marked as dirty. Dirty executions are logged and usually mailed to $whom2mail as long
+	##	as $mailOnDirty is set to true
+	##
+	################################################################################################################################
 	function checkDirty()
 	{
 		if [ "$isDirty" == "true" ]
@@ -600,24 +644,37 @@ source '../conf/config.sh' 2>/dev/null
 
 	}
 	
+	################################################################################################################################
+	##
+	## Write Dump backups information to Log
+	##
+	################################################################################################################################
 	function debugDump()
 	{
 		toLog "Variables data used:"
 		echo >> $errorLog
-		toLog "Backup mode, Remote=$Remote"
 		toLog "Backup target dir=$backupTargetDir"
-		toLog "SMB mount point=$smbMountPoint"
-		toLog "Server path=$serverPath"
-		toLog "Last Week backup folder=$lastWeekBackupFolder"
+		toLog "Backup mode, Remote=$Remote"
+
+		if [ "$Remote" == "true" ]
+		then
+			toLog "SMB mount point=$smbMountPoint"
+			toLog "Server path=$serverPath"
+			toLog "Last Week backup folder=$lastWeekBackupFolder"
+			toLog "Transfer All mechanism=$transferAll"
+		fi
+
 		toLog "Files dump place=$dumpPlace"
-		toLog "Tar options=$tarOptions"
+		toLog "Tar options used=$tarOptions"
 		toLog "Tar exclusion list=$tarExcluded"
-		toLog "Credentials are not shown for security reason. Change this is you want"
 	}
-	#
-	# Call at the start of the program to initialize the first params for the error log file. If function is not called at the script
-	# start then log file may not be complete.
-	#
+
+	################################################################################################################################
+	##
+	##	Called at the start of the program to initialize the first params for the error log file. If  not called at the beginnig
+	##	of the script then log file may not be complete. We should ALWAYS call this function first
+	##
+	################################################################################################################################
 	function startLogger()
 	{
 		# Remove (old) log before writing to it
