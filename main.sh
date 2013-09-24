@@ -1,14 +1,14 @@
 #!/bin/bash
 
-	echo "Starting now...1"
-source './conf/config.sh'
-	echo "Starting now...2"
+source './conf/config.sh' 2>/dev/null
+source './lib/functions.sh' 2>/dev/null
+
 	# Run everything!	
 	workDir=$defaultBackupDir
-	echo $workDir
-	#workDir=/home/admin/Backups
-source './lib/functions'
-	startLogger
+	#Star logging before doing anything else
+	startLogger 
+	#Star the backup process
 	backup
+	#Check if execution was marked as dirty
 	checkDirty
 	exit
