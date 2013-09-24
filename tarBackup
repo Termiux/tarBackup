@@ -348,7 +348,7 @@ readonly mailmsg=getMailMsgFile
 		$_rm $dumpPlace/error.log  2>/dev/null #We dont acre about rm failures 
 		toLog "Rm called for OLD error log"
 
-		if [ -e $smbMountPoint]
+		if [ -d $smbMountPoint]
 		then
 		
 			sayLoud "=============================== "
