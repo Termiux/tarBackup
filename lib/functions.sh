@@ -434,9 +434,9 @@ source '../conf/config.sh' 2>/dev/null
 	################################################################################################################################
 	function umountNow
 	{	
-		toLog "Calling umount"
 		if [ "$Remote" == "true" ]
 		then
+			toLog "Calling umount"
 			# If any error stoped the script from umounting the samba share unmounting NOW!
 	                {
                 	$_umount $smbMountPoint 2>>$errorLog
@@ -594,17 +594,19 @@ source '../conf/config.sh' 2>/dev/null
 	function leaveAndMail()
 	{
 		
+		now=$(date +%c)
 		## Append human friendly message, with name of the script and hostname, then append the log 
 		echo  > $mailmsg
-		echo "There was a problem with a script execution please check the infroamtion below to diagonose" >> $mailmsg
+		echo "There was a problem with a script execution please check the information below to diagonose" >> $mailmsg
 		echo "Script: $0" >> $mailmsg
 		echo "Hostname: $hostname" >> $mailmsg
 		echo  >> $mailmsg
-		echo "The error log is attached. ">> $mailmsg
+		echo "The error log is attached.">> $mailmsg
 		echo  >> $mailmsg
 		echo  >> $mailmsg
 		echo "===================  START ERROR LOG  ===================" >> $mailmsg
 		cat $errorLog >> $mailmsg
+		echo "Error log finished at...$now" >> $mailmsg
 		echo "===================   END ERROR LOG   ===================" >> $mailmsg
 		echo  >> $mailmsg
 		

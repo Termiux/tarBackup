@@ -142,7 +142,7 @@ remoteBackupIncomplete="false"
 # If you need to exclude certain folders, set this to those folder parent and then set the exclude list in the 
 # proper variable.
 #
-readonly backupTargetDir="/home/admin/testBkpFolder"
+readonly backupTargetDir="/etc"
 
 ###################################################################################################################################
 # 	>>>>>>>>>>>>>>>>>>>> 			MOST SET THIS VALUE BEFORE USING SCRIPT 		<<<<<<<<<<<<<<<<<<<<<<<<<<
