@@ -7,13 +7,12 @@
    GitHub: https://github.com/Termiux/tarBackup
 
    Jorge A. Moreno morenog.jorge@gmail.com
-   http://noobsysadmin.wordpress.com/
+   http://www.var-log-it.com/
 
 
-   You can use the script to backup your server using tar/gzip. Script can copy the backup files to a SMB share on another server, or just keep the backups locally if you wish.
+   You can use the script to backup your server using tar/gzip. Script can copy the backup files to any mount point or directly to a not previously mounted SMB share on another server.
 
-   I've made some improvements, so its a little more smart now when something bad happens. 
-   It also tries to inform you every time something unexpected happens so you always know what is going on.
+   The script will always try to inform you when something bad/unexpected happens. 
 														
   How to use the script:											
 														
@@ -24,10 +23,12 @@
  >>>>	IF YOU DON'T WANNA READ DESCRIPTION, DEFAULT OPTIONS ARE USUALLY OK <<<<	
 	However there are still variable you must set:								
 
-	*** Open the file tarBackup, variables that MUST be set are marked so ***
+	*** Open the file config.sh files that MUST be set are marked so ***
 														
 	Default values are as follow: 
-	Backups will be remote. Full Backup schedule for Sunday. Mail on dirty execution	
+	Backups will be remote, saved to a SMB Share
+	Create Full Backup every Sunday, Incremental the rest of the week.
+	 Mail on dirty execution(when something bad ahppens)	
 														
 	Following MUST be set:											
 														
@@ -64,17 +65,15 @@
 
 	Use this flag to override this and transfer the missing backups too (previous incrementals and full) so you have a complete Full and incrementals in the remote location, just as you do locally. Default: false
 
-CHANGES in this version (Minor version)										
+CHANGES in this version (Major version)										
 														
-  - Minor bugs caused by spaces on certain bash versions.
-  - Added new flah $mailNonFatalErrors, default is true, but you can set it to false to decrease the amout of mails you recive
-  - Binaries are now called via a variable tha points to full path rather than full path on each call (all binaries, some were missing from las commit)
+  - A lot of code has been refractored, moved around to easy configuration
+  - A few bugs corrected
 	
   TO DO's
+	- Need to easeu usage of normal mount points
 	- $transferAll implementation is ugly, needs improvement
-	- Debugging logger causes unneccesary overhead while checking if enabled. Needs changing
 	- Current user and pass schema its insecure needs improvement
-	- Try and reduce code further more and make it easier to understand
 	- Allow easier adaptation to other servers (still too custom)
 	- Improve the isDirty mechanism
 	- Improve the checkErrorCode mechanism to make it easier to use
