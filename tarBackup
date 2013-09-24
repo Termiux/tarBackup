@@ -2,7 +2,7 @@
 
 ##################################################################################################################
 ##														##
-##   tarBackup shell script Tested on RHEL 5									##
+##   tarBackup shell script Tested on RHEL 5 and Debian 7							##
 ##   Jorge A. Moreno morenog.jorge@gmail.com									##
 ##   System Backup Bash Shell Script										##
 ##														##
@@ -98,7 +98,7 @@ readonly tarOptions="czpf"
 # Tar exclusion folders list. This is ugly, we could have easily used -X option and point to a exclusion list file but I don't like to work with many
 # files. If you don't like it you can easily change it ;)
 #
-tarExcluded=" --exclude=error.log --exclude=/proc/* --exclude=/media/* --exclude=/dev/* --exclude=/mnt/* --exclude=/sys/* --exclude=/tmp/* --exclude=/serverBackups --exclude=/usr/share/doc"
+tarExcluded=" --exclude=error.log"
 
 #
 # If true mail will be deliver to $who2mail whenever script execution is marked as dirty.
@@ -292,6 +292,10 @@ _mountCifs=$(whereis mount | awk '{print $2}')
 
 _umount=$(whereis umount | awk '{print $2}')
 
+_hostname=$(whereis hostname | awk '{print $2}')
+
+_date=$(whereis date | awk '{print $2}')
+
 
 ###########################
 ##	   Mail		 ##	
@@ -305,7 +309,7 @@ _umount=$(whereis umount | awk '{print $2}')
 # Who do we mail when something breaks. Default set to root
 # This approach assumes you already have your mail server configured. If not mail will only be delivered locally only
 #
-who2mail="morenog.jorge@gmail.com"
+who2mail="root"
 
 #
 # Mail subject when something breaks
@@ -316,7 +320,7 @@ mailSubject="There was a problem with the backups"
 #
 # Holds the email message file name. This is used to store the mail message when something breaks and someone must be informed
 #
-mailmsg=$(getMailMsgFile)
+readonly mailmsg=getMailMsgFile
 	
 	#
 	# Create a tmp file via the mktemp program, this should help to create unique filenames, if it fails for any reason,
@@ -327,7 +331,7 @@ mailmsg=$(getMailMsgFile)
 	function getMailMsgFile
 	{
 		# Create mail msg file
-		fileName=$($_mktemp /tmp/mailMsg.XXXX) || { sayLoud "Could not create mail msg file! will fall back to old method";fileName="mailmsg.txt"; }
+		fileName=$($_mktemp /tmp/mailMsg.XXXX) || { sayLoud "Could not create mail msg file! will fall back to old method";fileName="/tmp/mailmsg.txt"; }
 		return $fileName
 	}
 	#
@@ -341,14 +345,22 @@ mailmsg=$(getMailMsgFile)
 	function mountShare()
 	{
 		# Sometime permission problems blocks the script from overwriting log. Erase old log before proceeding
-		$_rm $dumpPlace/error.log  2>/dev/null
+		$_rm $dumpPlace/error.log  2>/dev/null #We dont acre about rm failures 
 		toLog "Rm called for OLD error log"
+
+		if [ -e $smbMountPoint]
+		then
 		
-		sayLoud "=============================== "
-		sayLoud "Mounting share to copy backup..."
-		{
-		$_mountCifs $serverPath $smbMountPoint/ -o user=$credentials 2>>$errorLog
-		} && { sayLoud "Mount...succesful"; }|| { sayLoud "Mount...Failed!";leaveAndMail; }
+			sayLoud "=============================== "
+			sayLoud "Mounting share to copy backup..."
+			{
+			$_mountCifs $serverPath $smbMountPoint/ -o user=$credentials 2>>$errorLog
+			} && { sayLoud "Mount...succesful"; }|| { sayLoud "Mount...Failed!";leaveAndMail; }
+		
+		else
+			sayLoud "$smbMountPoint its already mounted"	
+			toLog "No need to call mount lets continue..."
+		fi
 
 	}
 
@@ -363,9 +375,9 @@ mailmsg=$(getMailMsgFile)
 		# and do some aditional logic, set remoteBackupIncomplete flag to true and log it
 		{
 		 checkPathExistence $dumpPlace 
-		}|| { remoteBackupIncomplete="true";toLog "Directory $dumpPlace had to be recreated, you will need to check manually for missing previous backups on $dumpPlance "; }
+		}|| { remoteBackupIncomplete="true";toLog "Directory $dumpPlace had to be recreated, you will need to check manually for missing previous backups on $dumpPlace "; }
 
-		checkPathExistence $lastWeekBackupFolder
+ 		checkPathExistence $lastWeekBackupFolder
 
 		checkWritePermissions $dumpPlace
 		
@@ -445,6 +457,8 @@ mailmsg=$(getMailMsgFile)
 	
 			# Folder did NOT existed, pass 1 to signal this condition
 			return 1;
+		else
+			toLog "Path: $1 exists, check passed"
 		fi
 
 	
@@ -463,9 +477,14 @@ mailmsg=$(getMailMsgFile)
 		 #Checks if SMB mount point exists, if not there is no point in checking folders below
 		if [ ! -d $path ]
 		then
-			# Default msg
-			sayLoud "I have not write permissions on $path I'll quit"
-			
+			if [ ! -w $path ]
+			then
+				# Default msg
+				sayLoud "I have not write permissions on $path I'll quit"
+			else
+				toLog "Seems like I have Write permission on $path"
+			fi
+
 			# Display optional msg if var is set
 			if [ ! -z "$errorMsg" ]
 			then
@@ -506,7 +525,7 @@ mailmsg=$(getMailMsgFile)
 			{ 
 				$_cp $defaultBackupDir/$outputName.tgz $dumpPlace/ 
 			} && { sayLoud "Transfer completed at $_date";sayLoud "Backup save...succesful";}|| { 
-			sayLoud "Backup save...Failed! File transfer was interrupted. Backup could not be saved to its configured destination";leaveAndMail; }
+			sayLoud "Backup save...Failed! File transfer was interrupted. Backup could not be saved to its configured remote destination. Remember that the backup is still in $defaultBackupDir";leaveAndMail; }
 		
 			# Copy Incremental data file
 			$_cp $defaultBackupDir/log.snar $dumpPlace/ 2>>$errorLog
@@ -555,7 +574,8 @@ mailmsg=$(getMailMsgFile)
 		{
 		$_tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir 2>>$errorLog
 	
-		} && { sayLoud "Tar process...succesful";toLog "This means local file has been succesfully created"; }|| { checkErrorCode "$tar"; }
+		} && { sayLoud "Tar process...succesful";toLog "This means local file has been succesfully created"; }|| { toLog "Tar was executed like this: 
+	$_tar $tarOptions $1/$outputName.tgz --same-owner --exclude=$1/$outputName.tgz $tarExcluded --listed-incremental $snarLog $backupTargetDir";checkErrorCode "$tar"; }
 	}	
 
         #
@@ -617,7 +637,8 @@ mailmsg=$(getMailMsgFile)
 				#return 0;
 				#exit
 			else
-				sayLoud "Tar process...Failed!"
+				sayLoud "Tar process...Failed! Could not create Tarball Fatal Error"
+				sayLoud "Check error log for more info!"
 				leaveAndMail
 			fi
 		fi
@@ -812,7 +833,7 @@ mailmsg=$(getMailMsgFile)
 	#
 	function alertLocalBackup()
 	{
-		sayLoud "Remote backups are disabled, backup will be saved on local file system only!"
+		sayLoud "Remote backups are disabled, backup has been saved on local file system!!"
 		# Successful backups is assumed if we reach this point
 		sayLoud "Backup save...succesful";
 	}
@@ -824,13 +845,14 @@ mailmsg=$(getMailMsgFile)
 	#
 	function checkIncompleteBackups
 	{
+		#We know remot backups are incomplete cause we mark it so when we found NO REMOTE folder. So we create it, that means there are no prior incrementals there
 		toLog "No remote folder!"
 		toLog "I'll mark execution as dirty to inform of problem above via mail"
 		isDirty="true"
 
 		if [ "$isFull" == "true" ]
 		then
-			sayLoud "Since this is a FULL backup there should be no problems however since we recreated the backup folder you should probably look into why it did not existed in the first place"
+			sayLoud "Since this is a FULL backup there should be no problems. I will send the FULL backup to the Remote destination"
 		else # Meaning is an incremental backup
 			if [ "$transferAll" == "true" ]
 			then
@@ -840,7 +862,8 @@ mailmsg=$(getMailMsgFile)
 				sayLoud "Backup save...failed!";leaveAndMail;}
 
 			else
-				sayLoud "Even after a successful folder creation keep in mind that only the most recent backup will be stored, since this is an incremental backup, this means that previous incrementals (if any) or prevoius FULL backups will not be stored on remote server, I will only transfer the most recently created backup, you can always override this behaviour via the transferAll flag"
+				sayLoug "transferAll is off, this means that I will only transfer the incremetal backup I just made to the remote host"
+				sayLoud "Since this is an incremental backup, this means that previous incrementals (if any) or prevoius FULL backups will not be transfered/stored on remote server, I will only transfer the most recently created backup, you can always override this behaviour via the transferAll flag"
 			fi
 		fi
 	}
@@ -857,7 +880,8 @@ mailmsg=$(getMailMsgFile)
 		
 		## Append human friendly message, with name of the script and hostname, then append the log 
 		echo  > $mailmsg
-		echo "There was a problem with the execution of script " $0 " in server " $hostname ". The error log is attached. ">> $mailmsg
+		echo "There was a problem with the execution of script $0 in server $hostname" >> $mailmsg
+		echo "The error log is attached. ">> $mailmsg
 		echo  >> $mailmsg
 		echo "===================  START ERROR LOG  ===================" >> $mailmsg
 		cat $errorLog >> $mailmsg
@@ -868,7 +892,7 @@ mailmsg=$(getMailMsgFile)
 		$_mail -s "$mailSubject" $who2mail < $mailmsg
 		
 		# Message content no longer relevant delete
-		rm $mailmsg && { toLog "$mailmsg deleted!"; } || { toLog "Could not delete $mailmsg"; }
+		$_rm $mailmsg && { toLog "$mailmsg deleted!"; } || { toLog "Could not delete $mailmsg"; }
 		
 		# If any error stopped the script from unmounting the samba share unmounting NOW!
 		umountNow
@@ -930,6 +954,8 @@ mailmsg=$(getMailMsgFile)
 		if [ "$debugging" == "true" ]
 		then
 			sayLoud "Debugging is ON"
+			echo >> $errorLog 
+			sayLoud "Saving log to $errorLog"
 			echo >> $errorLog 
 			debugDump
 			echo >> $errorLog 
