@@ -3,6 +3,7 @@
 														
    tarBackup shell script v0.5.2
    Backup Bash Shell Script								
+================================
    Tested on RHEL 5, and Debian 6
    GitHub: https://github.com/Termiux/tarBackup
 
@@ -18,8 +19,17 @@
 														
 	To use the script, you need to set a few values first. It is recommended to read the script working explanation below. Then you can set your own settings.  To use just drop the script in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance	is well configured you will be mailed of the script output. Anyway you will still be mail if something	happens. 												
 														
+Default Script Behavior
+-------------------------													
 														
+You can override default behavior using flags. The default is as follows:				
 														
+Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if not it  tries to create it. If it can't it complains about it, same if it has no write permissions on the share.												
+														
+If things go well it checks for 'Remote' previous backups.If found this backups are then moved! to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. Share is then unmounted and script finishes execution.	
+   														
+If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail (default is set to root). The mail will be accompanied by a error log so you can check what went wrong.
+
  >>>>	IF YOU DON'T WANNA READ DESCRIPTION, DEFAULT OPTIONS ARE USUALLY OK <<<<	
 	However there are still variable you must set:								
 
@@ -31,28 +41,19 @@
 	 Mail on dirty execution(when something bad ahppens)	
 														
 	Following MUST be set:											
-														
+`														
 	$backupTargetDir											
 	$credentials		==> Not necessary if $Remote set to false					
 	$smbMountPoint		==> Not necessary if $Remote set to false				
 	$serverPath		==> Not necessary if $Remote set to false				
 	$lastWeekBackupFolder	==> Not necessary if $Remote set to false				
 	$dumpPlace		==> Not necessary if $Remote set to false				
+`														
 														
-														
-   Explanation:												
-	You can override default behavior using flags. The default is as follows:				
-														
-	Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if not it  tries to create it. If it can't it complains about it, same if it has no write permissions on the share.												
-														
-	If things go well it checks for 'Remote' previous backups.If found this backups are then moved! to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. Share is then unmounted and script finishes execution.	
-   														
-	If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail (default is set to root). The mail will be accompanied by a error log so you can check what went wrong.
-
-
-   Important Flags
+Important Flags
+-------------------------													
 											
- 	You can check variables definition for detailed information, here is a list of things will you probably want to override with existent flags:
+You can check variables definition for detailed information, here is a list of things will you probably want to override with existent flags:
 
 	Remote Backups ($Remote): Remote backups can be made to be local only. Default: true
 
@@ -71,12 +72,13 @@ CHANGES in this version (Major version)
   - A few bugs corrected
 	
   TO DO's
-	- Need to easeu usage of normal mount points
-	- $transferAll implementation is ugly, needs improvement
-	- Current user and pass schema its insecure needs improvement
-	- Allow easier adaptation to other servers (still too custom)
-	- Improve the isDirty mechanism
-	- Improve the checkErrorCode mechanism to make it easier to use
-					
-														
-
+	- [x] Refractor code to usea configuration
+	- [ ] Need to make usage of normal mount points easier
+	- [ ] $transferAll implementation is ugly, needs improvement
+	- [ ] Current user and pass schema its insecure needs improvement
+	- [x] Allow easier adaptation to other servers (still too custom)
+	- [ ] Improve the isDirty mechanism
+	- [x] Improve the checkErrorCode mechanism to make it easier to use
+	- [x] Fix program paths problems
+	- [x] Make script debugging easier
+	- [x] Make script more verbose												
