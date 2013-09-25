@@ -1,29 +1,42 @@
 
 
 														
-   tarBackup shell script v0.5.2
+   tarBackup Bash shell script v0.6
    Backup Bash Shell Script								
-   Tested on RHEL 5, and Debian 6
+   Tested on RHEL 5,6 and Debian 7
    GitHub: https://github.com/Termiux/tarBackup
 
    Jorge A. Moreno morenog.jorge@gmail.com
    http://www.var-log-it.com/
 
 
-   You can use the script to backup your server using tar/gzip. Script can copy the backup files to any mount point or directly to a not previously mounted SMB share on another server.
+This script allows you to backup your server using tar/gzip. Script can copy the backup files to any mount point or dinamically mount/unmount a SMB share.
 
-   The script will always try to inform you when something bad/unexpected happens. 
+The script will always try to inform you when something bad/unexpected happens. 
 														
-  How to use the script:											
+<h1>How to use the script<h1>
 														
-	To use the script, you need to set a few values first. It is recommended to read the script working explanation below. Then you can set your own settings.  To use just drop the script in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance	is well configured you will be mailed of the script output. Anyway you will still be mail if something	happens. 												
+To use the script, you need to set a few values first. It is recommended to read the script working explanation below. Then you can set your own settings.  
+To use just drop the script and folders in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance	is well configured you will be mailed of the script output. 
+Anyway you will still be mail if something happens. 												
 														
+<h2>Default Behavior</h2>
+													
+Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if not it  tries to create it. If it can't it complains about it, same if it has no write permissions on the share.												
 														
-														
- >>>>	IF YOU DON'T WANNA READ DESCRIPTION, DEFAULT OPTIONS ARE USUALLY OK <<<<	
-	However there are still variable you must set:								
+If things go well it checks for 'Remote' previous backups.If found this backups are then moved! to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. Share is then unmounted and script finishes execution.	
+   													
+NOTE: When I talk abotu $Remote backups I mean SMB shares that will be dinamically mounted.
+	
+If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail (default is set to root). The mail will be accompanied by a error log so you can check what went wrong.
 
-	*** Open the file config.sh files that MUST be set are marked so ***
+
+														
+<b> >>>> IF YOU DON'T WANNA READ DESCRIPTION, DEFAULT OPTIONS ARE USUALLY OK <<<< </b>
+
+	<b>However there are still variable you must set</b>
+
+	*** Go to the conf folder and open the file config.sh  ***
 														
 	Default values are as follow: 
 	Backups will be remote, saved to a SMB Share
@@ -40,30 +53,33 @@
 	$dumpPlace		==> Not necessary if $Remote set to false				
 														
 														
-   Explanation:												
-	You can override default behavior using flags. The default is as follows:				
-														
-	Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if not it  tries to create it. If it can't it complains about it, same if it has no write permissions on the share.												
-														
-	If things go well it checks for 'Remote' previous backups.If found this backups are then moved! to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. Share is then unmounted and script finishes execution.	
-   														
-	If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail (default is set to root). The mail will be accompanied by a error log so you can check what went wrong.
+<b>Important Flags</b>
+You can check variables definition for detailed information, here is a list of things will you probably want to override with existent flags:
 
+<ul>											
+<li>
+Remote Backups ($Remote): Remote backups can be made to be local only. Default: true
+</li>
 
-   Important Flags
-											
- 	You can check variables definition for detailed information, here is a list of things will you probably want to override with existent flags:
-
-	Remote Backups ($Remote): Remote backups can be made to be local only. Default: true
-
-	Full Backup Day ($fullBackupDay): Sets the number of the day of the week when you would like to run a Full Backup. Day number is based on date program day starts on Monday (1). Default 7 (Sunday)
+<li>
+Full Backup Day ($fullBackupDay): Sets the number of the day of the week when you would like to run a Full Backup. Day number is based on date program day starts on Monday (1). Default 7 (Sunday)
+</li>
 	
-	Mail On Dirty	($mailOnDirty): Controls whether you wanna receive a mail notification when script execution was marked as dirty. A dirty execution is when script encountered non fatal errors so it managed to finish. Default: true														
-	Remove Old Backups ($removeOldBackups): We use the $lastWeekBackupFolder to store last week backups. When script runs and connects to remote SMB share it moves your last weeks backups to that folder and puts the new backup in $dumpPlace. However after a few weeks that folders gets all previous backups and gets big in size. Use this to erase those backups, and hold ONLY the last week backup and not all previous backups. Default: false
+<li>
+Mail On Dirty ($mailOnDirty): Controls whether you wanna receive a mail notification when script execution was marked as dirty. A dirty execution is when script encountered non fatal errors so it managed to finish. Default: true
+</li>
 
-	Transfer All ($transferAll): Sometimes (for example) if files were modified manually things can get messed up. Lets say someone erase your remote backups on a Monday. However you still have this week local backups. When the script runs it assumes you are making a incremental backup cause of your have other incremental and FULL for this week but once the share is mounted and folder inspected it realizes that the remote backups are none existent. This differs from your locals. So it alerts of it saying that only the current incremental backup (the one we're doing today) will be transfered. 
+<li>
+Remove Old Backups ($removeOldBackups): We use the $lastWeekBackupFolder to store last week backups. When script runs and connects to remote SMB share it moves your last weeks backups to that folder and puts the new backup in $dumpPlace. However after a few weeks that folders gets all previous backups and gets big in size. Use this to erase those backups, and hold ONLY the last week backup and not all previous backups. Default: false
+</li>
 
-	Use this flag to override this and transfer the missing backups too (previous incrementals and full) so you have a complete Full and incrementals in the remote location, just as you do locally. Default: false
+<li>
+Transfer All ($transferAll): Sometimes (for example) if files were modified manually things can get messed up. Lets say someone erase your remote backups on a Monday. However you still have this week local backups. When the script runs it assumes you are making a incremental backup cause of your have other incremental and FULL for this week but once the share is mounted and folder inspected it realizes that the remote backups are none existent. This differs from your locals. So it alerts of it saying that only the current incremental backup (the one we're doing today) will be transfered.
+
+Use this flag to override this and transfer the missing backups too (previous incrementals and full) so you have a complete Full and incrementals in the remote location, just as you do locally. Default: false
+</li>
+</ul>
+
 
 CHANGES in this version (Major version)										
 														
@@ -79,4 +95,3 @@ CHANGES in this version (Major version)
 	- Improve the checkErrorCode mechanism to make it easier to use
 					
 														
-
