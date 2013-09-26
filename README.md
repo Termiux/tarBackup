@@ -1,6 +1,3 @@
-
-
-														
    tarBackup shell script v0.5.2
    Backup Bash Shell Script								
 ================================
@@ -10,28 +7,25 @@
    Jorge A. Moreno morenog.jorge@gmail.com
    http://www.var-log-it.com/
 
+-------------------------													
+You can use the script to backup your server using tar/gzip. Script can copy the backup files to any mount point or directly to a not previously mounted SMB share on another server.
 
-   You can use the script to backup your server using tar/gzip. Script can copy the backup files to any mount point or directly to a not previously mounted SMB share on another server.
-
-   The script will always try to inform you when something bad/unexpected happens. 
-														
-  How to use the script:											
-														
-	To use the script, you need to set a few values first. It is recommended to read the script working explanation below. Then you can set your own settings.  To use just drop the script in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance	is well configured you will be mailed of the script output. Anyway you will still be mail if something	happens. 												
-														
+The script will always try to inform you when something bad/unexpected happens. 
+												
+How to use the script
+									
+To use the script, you need to set a few values first. It is recommended to read the script working explanation below. Then you can set your own settings.  To use just drop the script in /etc/cron.daily/ or set it editing crontab. After that just forget it. If your cron instance	is well configured you will be mailed of the script output. Anyway you will still be mail if something	happens. 	
+												
 Default Script Behavior
 -------------------------													
-														
 You can override default behavior using flags. The default is as follows:				
-														
 Script makes a tar Gzip file of $defaultBackupDir depending of the day of the week or if previous backups exist. If script can't find previous backups it performs a FULL backup regardless of the day 	of the week. Otherwise full backups happens only on $fullBackupDay. After tar is done it connects to a remote SMB share. After mount is done, it checks if $dumpPlace (where we put the backups) exists, if not it  tries to create it. If it can't it complains about it, same if it has no write permissions on the share.												
-														
-If things go well it checks for 'Remote' previous backups.If found this backups are then moved! to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. Share is then unmounted and script finishes execution.	
-   														
+If things go well it checks for 'Remote' previous backups.If found this backups are then moved! to $lastweekBackupFolder. If not found (or after move is done), new backup is dump in $dumpPlace. Share is then unmounted and script finishes execution.
+
 If something goes wrong during execution you will be informed by mail. Recipient is set in $whom2mail (default is set to root). The mail will be accompanied by a error log so you can check what went wrong.
 
- >>>>	IF YOU DON'T WANNA READ DESCRIPTION, DEFAULT OPTIONS ARE USUALLY OK <<<<	
-	However there are still variable you must set:								
+>	IF YOU DON'T WANNA READ DESCRIPTION, DEFAULT OPTIONS ARE USUALLY OK
+>	However there are still variable you must set:								
 
 	*** Open the file config.sh files that MUST be set are marked so ***
 														
@@ -41,15 +35,13 @@ If something goes wrong during execution you will be informed by mail. Recipient
 	 Mail on dirty execution(when something bad ahppens)	
 														
 	Following MUST be set:											
-`														
-	$backupTargetDir											
-	$credentials		==> Not necessary if $Remote set to false					
-	$smbMountPoint		==> Not necessary if $Remote set to false				
-	$serverPath		==> Not necessary if $Remote set to false				
-	$lastWeekBackupFolder	==> Not necessary if $Remote set to false				
+	$backupTargetDir									
+	$credentials		==> Not necessary if $Remote set to false
+	$smbMountPoint		==> Not necessary if $Remote set to false
+	$serverPath		==> Not necessary if $Remote set to false
+	$lastWeekBackupFolder	==> Not necessary if $Remote set to false
 	$dumpPlace		==> Not necessary if $Remote set to false				
 `														
-														
 Important Flags
 -------------------------													
 											
@@ -66,12 +58,14 @@ You can check variables definition for detailed information, here is a list of t
 
 	Use this flag to override this and transfer the missing backups too (previous incrementals and full) so you have a complete Full and incrementals in the remote location, just as you do locally. Default: false
 
-CHANGES in this version (Major version)										
+CHANGES in this version (Major version)
+-------------------------													
 														
   - A lot of code has been refractored, moved around to easy configuration
   - A few bugs corrected
 	
   TO DO's
+-------------------------													
 	- [x] Refractor code to usea configuration
 	- [ ] Need to make usage of normal mount points easier
 	- [ ] $transferAll implementation is ugly, needs improvement
