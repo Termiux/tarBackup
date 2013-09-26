@@ -1,4 +1,13 @@
 
+
+	################################################################################################################################
+	##															      ##
+	##		THIS ARE ALL THE FUNCTIONS OF THE SCRIPT BE WARY OF MAKING CHANGES IN HERE SINCE THEY MAY AFFECT	      ##
+	##		OTHER PARTS OF THE SCRIPT. ALL THESE ARE USED AS OF NOW DEPENDING ON THE FLAGS SET			      ##	
+	##															      ##	
+	################################################################################################################################
+
+
 source '../conf/config.sh' 2>/dev/null
 	
 	################################################################################################################################
@@ -485,6 +494,7 @@ source '../conf/config.sh' 2>/dev/null
 			then
 				# About to clean remote backups mount share now
 				mountShare
+				# We cant check path existence or permissions if not munted
 				checkShare
 
 				# Move previous backups to another folder, move instead of erase to avoid ending up with no backups at all
